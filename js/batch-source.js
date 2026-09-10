@@ -5,7 +5,7 @@
  * ============================================================ */
 (function () {
 'use strict';
-  const { isGarbled, parseCSV, analyzeWorkbookSheets } = BatchParse;
+  const { isGarbled, parseCSV, analyzeWorkbookSheets, buildSourceItem } = BatchParse;
   const { ensureXLSX } = Exporter;
 function handleFile(e) {
   if (e.target.files.length) handleFiles(e.target.files);
@@ -93,19 +93,6 @@ function onFileParsed() {
     document.getElementById('file-input').value = '';
   }
 }
-
-function buildSourceItem({ type, fileName, sheetName = '', rows = [], selected = true, analysis = null }) {
-  return {
-    id: `${type}:${fileName}:${sheetName || 'default'}:${Math.random().toString(36).slice(2, 8)}`,
-    type,
-    fileName,
-    sheetName,
-    rows,
-    selected,
-    analysis
-  };
-}
-
 
 function collectSelectedRows() {
   const rows = [];

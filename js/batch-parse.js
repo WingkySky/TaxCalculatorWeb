@@ -227,9 +227,14 @@ function extractMonthHintFromRows(rows, fallbackYear = '') {
           return direct;
         }
       }
-      const numericCandidate = [current, next, nextRight].find(candidate => /^\d{1,2}$/.test(String(candidate || '').trim()));
+      // 「月份」邻格可能是纯月份数字（9）或带月字（9月），配合文件名/表头年份提示拼出完整年月
+      const numOf = candidate => {
+        const m = String(candidate || '').trim().match(/^(\d{1,2})\s*月?$/);
+        return m ? m[1] : '';
+      };
+      const numericCandidate = [current, next, nextRight].find(candidate => numOf(candidate) !== '');
       if (numericCandidate && yearHint) {
-        const built = buildMonthFromParts(yearHint, numericCandidate);
+        const built = buildMonthFromParts(yearHint, numOf(numericCandidate));
         if (built) return built;
       }
     }
@@ -432,6 +437,19 @@ function analyzeSheet(sheetName, rows, workbookMonthHint = '', workbookYearHint 
     amountRate: coverage.amountRate,
     monthRate: coverage.monthRate,
     identityRate: coverage.identityRate
+  };
+}
+
+/** 数据源条目工厂：CSV 与 Excel 工作表两条入队路径共用（须留在纯逻辑层，batch-source 亦经 BatchParse 调用） */
+function buildSourceItem({ type, fileName, sheetName = '', rows = [], selected = true, analysis = null }) {
+  return {
+    id: `${type}:${fileName}:${sheetName || 'default'}:${Math.random().toString(36).slice(2, 8)}`,
+    type,
+    fileName,
+    sheetName,
+    rows,
+    selected,
+    analysis
   };
 }
 
@@ -843,7 +861,7 @@ function detectColumnMapping(headerRow, dataRows) {
 
   return { cols, amountType: 'preTax' };
 }
-  window.BatchParse = { COL_KEYWORDS, COL_TYPE_LABELS, analyzeSheet, analyzeWorkbookSheets, buildMonthFromParts, compareMonth,
+  window.BatchParse = { COL_KEYWORDS, COL_TYPE_LABELS, analyzeSheet, analyzeWorkbookSheets, buildMonthFromParts, buildSourceItem, compareMonth,
     detectColumnMapping, extractMonthHint, extractMonthHintFromRows, extractSortDateTime, extractYearHint, getAmountColumnScore,
     getColumnMatchScore, getSheetNameScore, isAmountHeaderExcluded, isAmountLikeNumber, isGarbled, isHeaderContinuation,
     isSummaryLikeRow, isSummaryLikeText, mergeHeaderRows, normalizeMonth, normalizeMonthWithHint, parseCSV, rowHasStrongIdentity,
