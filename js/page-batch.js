@@ -47,6 +47,7 @@ function processWithMapping(dataRows, colMap, filename, sourceItems = []) {
       let month = '', amount = 0, name = '默认', idCard = '', phone = '', bankCard = '';
       let socialBase = '', fundBase = '', fundRate = '', extraDeduction = '', bonus = '';
       let city = '';
+      let withholdRate = '';
       const monthHint = row._sheetMonthHint || '';
 
       // 金额类单元格：空值保留 ''（区别于显式 0），供行内值优先/全局兜底判断
@@ -69,6 +70,8 @@ function processWithMapping(dataRows, colMap, filename, sourceItems = []) {
       if (rowColMap.extraDeduction != null) extraDeduction = readAmt(rowColMap.extraDeduction);
       if (rowColMap.bonus != null) bonus = readAmt(rowColMap.bonus);
       if (rowColMap.city != null) city = String(row[rowColMap.city] == null ? '' : row[rowColMap.city]).trim();
+      /* 平台核定代征税率（如灵工发放表「个税核定代征税率 0.10」）：解析为小数比例，供核定口径计税 */
+      if (rowColMap.withholdRate != null) withholdRate = parseFundRate(row[rowColMap.withholdRate]);
       if ((!month || month === '-') && monthHint) month = monthHint;
       name = sanitizeName(name) || '默认';
 
@@ -98,6 +101,7 @@ function processWithMapping(dataRows, colMap, filename, sourceItems = []) {
           extraDeduction,
           bonus,
           city,
+          withholdRate,
           person: name,
           idCard,
           phone,

@@ -78,9 +78,22 @@ function processFile(file) {
 function readExcel(file) {
   const reader = new FileReader();
   reader.onload = e => {
-    const wb = XLSX.read(e.target.result, { type: 'array' });
-    const sheetItems = analyzeWorkbookSheets(wb, file.name);
-    sheetItems.forEach(item => _accumSources.push(item));
+    try {
+      if (typeof XLSX === 'undefined') throw new Error('SheetJS 解析库未加载（本地 xlsx.full.min.js 缺失且网络不可达）');
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const sheetItems = analyzeWorkbookSheets(wb, file.name);
+      if (!sheetItems.length) {
+        alert(`未能从「${file.name}」识别到含数据的 Sheet：工作表为空或没有可解析的数据行。\n请确认导出的是完整发放表（含明细数据），而非受保护/损坏的文件。`);
+      }
+      sheetItems.forEach(item => _accumSources.push(item));
+    } catch (err) {
+      alert(`解析「${file.name}」失败：${err && err.message ? err.message : err}\n请确认文件完整且未被占用后重试。`);
+      console.error('[BatchSource] Excel 解析失败:', err);
+    }
+    onFileParsed();
+  };
+  reader.onerror = () => {
+    alert(`读取「${file.name}」失败，请确认文件可访问（网络盘/云盘同步未完成时可能读取不全）后重试。`);
     onFileParsed();
   };
   reader.readAsArrayBuffer(file);

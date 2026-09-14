@@ -278,6 +278,32 @@ function runBatchSalaryPerson(group, records) {
 }
 
 /**
+ * 平台核定代征口径（正向）：灵工发放表带「个税核定代征税率」列时按平台公式复算——
+ * 应纳税所得额 = 收入额×80% − 当月减除 5000（不累计），税 = 应纳税所得额 × 核定税率。
+ * 累计列（cumIncome/cumDeduction/cumTaxDue）仍照常滚动以便展示，但税额不参与累进与累计抵扣。
+ */
+function calcWithholdFlat(amount, cumIncome, cumDeduction, cumTax, rate) {
+  const withholdingIncome = round2(amount * 0.8);
+  /* 平台口径按当月减除 5000 计算（不累计）；cumDeduction 仅作展示透传 */
+  const taxableIncome = Math.max(0, round2(withholdingIncome - 5000));
+  const currentTax = round2(taxableIncome * rate);
+  return {
+    preTax: amount,
+    withholdingIncome,
+    cumIncome: cumIncome + withholdingIncome,
+    cumDeduction,
+    taxableIncome,
+    rate,
+    quick: 0,
+    cumTaxDue: round2(cumTax + currentTax),
+    currentTax,
+    postTax: round2(amount - currentTax),
+    effectiveRate: amount > 0 ? currentTax / amount : 0,
+    _withholdFlat: true
+  };
+}
+
+/**
  * 单人劳务报酬计税流水线（自 runBatchCalc 函数化）：新政策累计预扣 + 断月重置 + 旧政策按次，
  * 行为与原内联实现一致，逐笔返回带 _isGap/_isOldPolicy 标注的行。
  */
@@ -320,7 +346,12 @@ function runBatchLaborPass(group, records) {
         cumDeduction += 5000;
       }
 
-      const r = calcTaxByDirection(batchDirection, d.amount, cumIncome, cumDeduction, cumTax);
+      /* 行内带核定代征税率（灵工平台发放表）→ 按平台口径正向复算；反算方向不适用，回退政策口径 */
+      const flatRate = (batchDirection === 'forward' && d.withholdRate !== '' && d.withholdRate != null)
+        ? Number(d.withholdRate) || 0 : 0;
+      const r = flatRate > 0
+        ? calcWithholdFlat(d.amount, cumIncome, cumDeduction, cumTax, flatRate)
+        : calcTaxByDirection(batchDirection, d.amount, cumIncome, cumDeduction, cumTax);
       cumIncome = r.cumIncome;
       cumTax = r.cumTaxDue;
 

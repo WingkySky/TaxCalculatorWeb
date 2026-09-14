@@ -382,6 +382,14 @@ function scoreDataCoverage(headerRow, dataRows, autoMap) {
   return { score, amountRate, monthRate, identityRate };
 }
 
+/** 从文本提取「N月」裸月份（不带年份），如「费用明细 (绵花棠8月)」→ '8'；无则 '' */
+function extractBareMonth(text) {
+  const m = String(text || '').match(/(\d{1,2})\s*月/);
+  if (!m) return '';
+  const n = parseInt(m[1], 10);
+  return (n >= 1 && n <= 12) ? String(n) : '';
+}
+
 function analyzeSheet(sheetName, rows, workbookMonthHint = '', workbookYearHint = '') {
   const nonEmptyRows = (rows || []).filter(row => row.some(cell => String(cell || '').trim() !== ''));
   if (!nonEmptyRows.length) {
@@ -420,7 +428,12 @@ function analyzeSheet(sheetName, rows, workbookMonthHint = '', workbookYearHint 
 
   const coverage = scoreDataCoverage(headerRow, dataRows, autoMap);
   const nameScore = getSheetNameScore(sheetName);
-  const monthHint = extractMonthHint(sheetName) || extractMonthHintFromRows(nonEmptyRows, workbookYearHint) || workbookMonthHint;
+  /* 月份优先级：Sheet 名整年月 > Sheet 名「N月」+年份 > 表内行扫描（汇总区「月份」邻格）> 文件名整年月。
+     平台发放表的汇总区月份常是模板残留（如 8 月表写「12月」），而 Sheet 名自带真实所属期
+     （如「费用明细 (绵花棠8月)」），故 Sheet 名可信度最高；文件名月份仅兜底。 */
+  const rowMonthHint = extractMonthHintFromRows(nonEmptyRows, workbookYearHint);
+  const sheetBareMonth = buildMonthFromParts(extractYearHint(sheetName) || workbookYearHint, extractBareMonth(sheetName));
+  const monthHint = extractMonthHint(sheetName) || sheetBareMonth || rowMonthHint || workbookMonthHint;
   const score = headerScore + coverage.score + nameScore + (monthHint ? 4 : 0);
 
   return {
@@ -615,6 +628,14 @@ const COL_KEYWORDS = [
     exclude: null
   },
   {
+    type: 'withholdRate',
+    patterns: [
+      /^(个税核定代征税率|核定代征税率|核定税率|代征税率|预征率|代征率)$/i,
+      /核定代征|代征税率|核定税率|预征率|代征率/i
+    ],
+    exclude: /服务费|公积金|社保/i
+  },
+  {
     type: 'note',
     patterns: [
       /^(备注|note|说明|remark|类型|方式|承担|服务费|税源地|业务类型)$/i,
@@ -639,6 +660,7 @@ const COL_TYPE_LABELS = {
   phone:     ' 电话',
   bankName:  ' 开户银行',
   bankCard:  ' 银行卡',
+  withholdRate: ' 核定代征率',
   note:      ' 备注',
 };
 

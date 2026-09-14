@@ -536,7 +536,7 @@ function renderBatchResults(results, filename, personKeys, personsMap, identityF
             <td>${formatRate(r.rate)}<div style="font-size:10px;color:var(--t-text-2);">速算 ${formatNum(r.quick)}${isSalary && isBonusRow ? '（÷12）' : ''}</div></td>
             <td class="tax-col">¥${formatNum(r.currentTax)}</td>
             <td class="highlight">¥${formatNum(batchDirection === 'forward' ? r.postTax : r.preTax)}</td>
-            <td>${isSalary ? (isBonusRow ? `年终奖·${r._bonusStrategy === 'combined' ? '并入综合所得' : '单独计税'}` : '累计预扣') : (r._isOldPolicy ? '旧政策' : '新政策')}</td>
+            <td>${isSalary ? (isBonusRow ? `年终奖·${r._bonusStrategy === 'combined' ? '并入综合所得' : '单独计税'}` : '累计预扣') : (r._withholdFlat ? `核定代征 ${formatRate(r._withholdRate)}` : (r._isOldPolicy ? '旧政策' : '新政策'))}</td>
           </tr>`;
       }).join('');
 
