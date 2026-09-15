@@ -60,7 +60,7 @@ function updateMultiInputHints() {
     placeholder = reverse ? '期望实发' : '应发工资';
     hint = reverse
       ? '输入每月期望实发工资，系统反算所需应发工资。留空的月份自动跳过。'
-      : '输入每月应发工资（税前），按上方「工资参数」卡设置的城市与基数计算三险一金与个税。留空的月份自动跳过。';
+      : '输入每月应发工资（税前），按上方「工资参数」卡设置的城市与基数计算社保公积金与个税。留空的月份自动跳过。';
   } else {
     placeholder = reverse ? '税后金额' : '税前金额';
     hint = reverse
@@ -160,7 +160,7 @@ function calcMulti() {
   let cumIncome = 0;
   let cumTax = 0;
   let cumDeduction = 0;
-  let cumSI = 0;      // 累计三险一金（展示与公式导出用）
+  let cumSI = 0;      // 累计社保公积金（展示与公式导出用）
   let cumExtra = 0;   // 累计专项附加（展示与公式导出用）
   const results = [];
   let lastMonth = '';
@@ -198,7 +198,7 @@ function calcMulti() {
 
   entries.forEach(d => {
     if (isSalary) {
-      /* 工资薪金：始终累计预扣；逐月匹配城市政策；每月减除 = 5000 + 三险一金 + 专项附加（同月只计一次） */
+      /* 工资薪金：始终累计预扣；逐月匹配城市政策；每月减除 = 5000 + 社保公积金 + 专项附加（同月只计一次） */
       const isBonusRow = !!d.isBonus;
       const salarySI = isBonusRow ? 0 : d.si;
       const salaryExtra = isBonusRow ? 0 : d.extra;
@@ -447,10 +447,10 @@ function renderMultiResults(results, plan) {
       const mDetail = [
         mi('备注', buildNoteCellHTML(r, isSalary), true),
         isSalary
-          ? mi('三险一金(个人)', `¥${formatNum(r.socialInsurance)}`)
+          ? mi('社保公积金(个人)', `¥${formatNum(r.socialInsurance)}`)
           : mi('本次预扣收入额', `¥${formatNum(r.withholdingIncome)}`),
         ...(isSalary ? [
-          mi('单位社保公积金', `¥${formatNum(siEmployerTotal(r._siDetail))}`),
+          mi('社保公积金(单位)', `¥${formatNum(siEmployerTotal(r._siDetail))}`),
           mi('专项附加', `¥${formatNum(r.extraDeduction)}`),
         ] : []),
         mi('累计发放金额', cumCell(r.cumIncome)),
@@ -510,7 +510,7 @@ function renderMultiResults(results, plan) {
       </div>
       ${isSalary ? `
       <div class="summary-item">
-        <div class="label">单位社保公积金</div>
+        <div class="label">社保公积金(单位)</div>
         <div class="value" style="color:var(--t-text-2);">¥${formatNum(totalEmployer)}</div>
       </div>
       <div class="summary-item">
@@ -542,7 +542,7 @@ function renderMultiResults(results, plan) {
                 <th>月份</th>
                 <th>备注</th>
                 <th>${inLabel}</th>
-                ${isSalary ? '<th>三险一金(个人)</th><th>单位社保公积金</th><th>专项附加</th>' : '<th>本次预扣收入额</th>'}
+                ${isSalary ? '<th>社保公积金(个人)</th><th>社保公积金(单位)</th><th>专项附加</th>' : '<th>本次预扣收入额</th>'}
                 <th>累计发放金额</th>
                 <th>累计减除费用</th>
                 <th>累计应纳税所得额</th>
@@ -610,7 +610,7 @@ function exportMultiCSV() {
   const { preLabel, postLabel } = incomeIOLabels(multiDirection, '期望实发（已知）');
   let header, rows;
   if (isSalary) {
-    header = `月份,备注,${preLabel},三险一金(个人),单位社保公积金,专项附加扣除,累计发放金额,累计减除费用,累计应纳税所得额,适用税率,速算扣除数,本期预扣税额,${postLabel},计税方式\n`;
+    header = `月份,备注,${preLabel},社保公积金(个人),社保公积金(单位),专项附加扣除,累计发放金额,累计减除费用,累计应纳税所得额,适用税率,速算扣除数,本期预扣税额,${postLabel},计税方式\n`;
     rows = results.map(r =>
       `${r.month},${r.note}${r._isBonus ? (r._bonusSeparate ? '(单独计税)' : '(并入综合所得)') : ''},${round2(multiDirection === 'forward' ? r.preTax : r.postTax)},${round2(r.socialInsurance || 0)},${round2(siEmployerTotal(r._siDetail))},${round2(r.extraDeduction || 0)},${r._isBonus && r._bonusSeparate ? '' : round2(r.cumIncome)},${r._isBonus && r._bonusSeparate ? '' : round2(r.cumDeduction || 0)},${r._isBonus && r._bonusSeparate ? '' : round2(r.taxableIncome)},${formatRate(r.rate)},${round2(r.quick || 0)},${round2(r.currentTax)},${round2(multiDirection === 'forward' ? r.postTax : r.preTax)},${r._isBonus ? '年终奖' : '累计预扣'}`
     ).join('\n');

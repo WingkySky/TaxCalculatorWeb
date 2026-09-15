@@ -67,9 +67,9 @@ function render() {
         <div style="font-weight:600;margin-bottom:8px;">工资薪金（按月）</div>
         ${monthGridHTML('sal')}
         <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--t-text-2);align-items:center;">
-          <span>三险一金年扣除额（据实，估算 = 月额×有薪月数，可改）</span>
+          <span>社保公积金年扣除额（据实，估算 = 月额×有薪月数，可改）</span>
           <input type="number" id="ann-si-annual" min="0" value="${Math.round(si * 12)}" style="width:120px;">
-          <span>月三险一金 ¥${formatNum(si)} · 月专项附加 ¥${formatNum(extra)}（取自「工资参数」卡）</span>
+          <span>月社保公积金 ¥${formatNum(si)} · 月专项附加 ¥${formatNum(extra)}（取自「工资参数」卡）</span>
         </div>
       </div>
       <div class="boxed-block" style="margin-bottom:14px;">
@@ -209,7 +209,7 @@ function calc() {
         </tbody>
       </table>
       <div style="font-size:13px;margin-top:10px;color:var(--t-text);">
-        应纳税所得额 = 收入额 ¥${formatNum(r.totalIncomeAmount)} − 基本减除 60,000 − 三险一金 ¥${formatNum(r.salaryDeductionsAnnual)} − 专项附加 ¥${formatNum(r.extraAnnual)} = <strong>¥${formatNum(r.taxable)}</strong>
+        应纳税所得额 = 收入额 ¥${formatNum(r.totalIncomeAmount)} − 基本减除 60,000 − 社保公积金 ¥${formatNum(r.salaryDeductionsAnnual)} − 专项附加 ¥${formatNum(r.extraAnnual)} = <strong>¥${formatNum(r.taxable)}</strong>
         （适用税率 ${formatRate(r.rate)}，速算扣除数 ¥${formatNum(r.quick)}）
       </div>
       <table class="result-table" style="margin-top:10px;">

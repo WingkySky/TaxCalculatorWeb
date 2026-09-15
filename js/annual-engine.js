@@ -37,7 +37,7 @@ function incomeOf(kind, amount) {
   return 0;
 }
 
-/** 工资预扣估算：按月累计预扣（只计有薪月，减除 5,000+三险一金+专项附加），与多月累计页一致 */
+/** 工资预扣估算：按月累计预扣（只计有薪月，减除 5,000+社保公积金+专项附加），与多月累计页一致 */
 function estimateSalaryWithholding(entries, siMonthly, extraMonthly) {
   let cumIncome = 0, cumTax = 0, cumDed = 0, total = 0;
   (entries || []).forEach(e => {
@@ -84,7 +84,7 @@ function estimateRoyaltyWithholding(amount) {
 
 /**
  * 年度汇算：应纳税额与退补判定
- * @param {object} input { salaryIncome, salaryDeductionsAnnual（工资三险一金年额，仅工资据实扣除）,
+ * @param {object} input { salaryIncome, salaryDeductionsAnnual（工资社保公积金年额，仅工资据实扣除）,
  *   laborIncome, authorIncome, royaltyIncome, extraAnnual,
  *   withheld: { salary, labor, author, royalty }（页面已解析的最终值：估算或手填） }
  */

@@ -78,7 +78,7 @@ function findBonusTrapZone(bonus) {
 /**
  * 计税策略：
  * labor  — 连续劳务报酬：收入×80% 计入累计，税后=税前−税；2025-10 前走旧政策（不扣税）
- * salary — 工资薪金：收入100% 计入累计，每月减除含三险一金与专项附加，税后实发=应发−三险一金−税
+ * salary — 工资薪金：收入100% 计入累计，每月减除含社保公积金与专项附加，税后实发=应发−社保公积金−税
  */
 const TAX_STRATEGIES = {
   labor: {
@@ -139,7 +139,7 @@ function calcTaxForward(income, cumIncome = 0, cumDeduction = 5000, cumTax = 0, 
 function calcTaxReverse(postTaxTarget, cumIncome = 0, cumDeduction = 5000, cumTax = 0, strategy = DEFAULT_STRATEGY, ctx = {}) {
   // Binary search for preTax
   // Upper bound: at 45% tax rate, preTax ≈ postTax / 0.55, add generous margin
-  // （salary 的三险一金不随税前变化，一并计入上界）
+  // （salary 的社保公积金不随税前变化，一并计入上界）
   const si = (ctx && ctx.socialInsurance) || 0;
   let lo = 0;
   let hi = (postTaxTarget + si) * 3 + 500000;

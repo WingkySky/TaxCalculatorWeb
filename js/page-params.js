@@ -237,7 +237,7 @@ function renderSalaryItemsTable() {
           <td style="color:var(--t-text-2);">¥${formatNum(det.employer[it.key] || 0)}</td>
         </tr>`;
       }).join('')}
-      <tr class="total-row"><td colspan="5">三险一金合计（个人/月）</td><td style="color:var(--t-primary);">¥${formatNum(det.total)}</td><td></td></tr>
+      <tr class="total-row"><td colspan="5">社保公积金合计（个人/月）</td><td style="color:var(--t-primary);">¥${formatNum(det.total)}</td><td></td></tr>
       <tr class="total-row"><td colspan="5">单位缴纳合计（企业/月）</td><td></td><td style="color:var(--t-text-2);">¥${formatNum(det.employer.total)}</td></tr>
       ${salaryParams.socialBase > 0 ? `<tr class="total-row"><td colspan="5">企业用工总成本（月薪 ${formatNum(salaryParams.socialBase)} 口径）</td><td colspan="2" style="color:var(--t-warning);">¥${formatNum(round2(salaryParams.socialBase + det.employer.total))}</td></tr>` : ''}
     </tbody>`;

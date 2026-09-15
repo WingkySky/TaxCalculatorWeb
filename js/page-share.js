@@ -76,7 +76,7 @@ function buildMultiShare() {
   return p;
 }
 
-/** 汇算分享 payload：年度/收入 12 月×2/稿酬/特许权/三险一金年额/专项附加 7 项/预扣手填值 */
+/** 汇算分享 payload：年度/收入 12 月×2/稿酬/特许权/社保公积金年额/专项附加 7 项/预扣手填值 */
 function buildAnnualShare() {
   const read = id => (document.getElementById(id) || {}).value;
   const amounts = prefix => MONTH_IDS.map((_, i) => Math.max(0, Number(read(`ann-${prefix}-${i}`)) || 0));

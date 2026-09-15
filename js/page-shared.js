@@ -3,7 +3,7 @@
  * 职责：两个计算页重复使用的逻辑收口到一处——
  *       方向正反算、方向/类型输入输出标签、年终奖独立行排序插入、
  *       结果表跨列提示行（年度重算/断月重置/旧政策）、
- *       单位社保悬浮明细、身份列有无检测。
+ *       社保公积金（单位）悬浮明细、身份列有无检测。
  * 对外接口：window.PageShared。依赖：TaxEngine/TaxUtils/TaxState（别名）。
  * ============================================================ */
 (function () {
@@ -68,14 +68,14 @@ function oldPolicyRowHTML(colspan, month) {
     'padding:8px;font-weight:600;color:var(--t-warning);font-size:12px;', `旧政策：${month} 按生产经营所得计算，不扣税（2025年10月1日前）`);
 }
 
-/** 「单位社保公积金」列悬浮明细（无单位部分返回空串） */
+/** 「社保公积金（单位）」列悬浮明细（无单位部分返回空串） */
 function siEmployerTooltip(si) {
   return si && si.employer
     ? ` title="单位养老 ¥${formatNum(si.employer.pension)} / 医疗 ¥${formatNum(si.employer.medical)} / 失业 ¥${formatNum(si.employer.unemployment)} / 工伤 ¥${formatNum(si.employer.injury)} / 公积金 ¥${formatNum(si.employer.fund)}"`
     : '';
 }
 
-/** 单位社保公积金合计（无单位部分返回 0；结果列与汇总共用） */
+/** 社保公积金（单位）合计（无单位部分返回 0；结果列与汇总共用） */
 function siEmployerTotal(si) {
   return si && si.employer ? si.employer.total : 0;
 }

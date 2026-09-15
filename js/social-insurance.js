@@ -1,6 +1,6 @@
 /* ============================================================
- * social-insurance.js — SocialIns 三险一金与专项附加计算
- * 职责：按城市政策计算三险一金明细（个人+单位+企业成本）、
+ * social-insurance.js — SocialIns 社保公积金与专项附加计算
+ * 职责：按城市政策计算社保公积金明细（个人+单位+企业成本）、
  *       专项附加扣除 7 项分项按月计算与校验、房租档位建议。
  * 对外接口：window.SocialIns。依赖：PolicyLib、TaxState。
  * ============================================================ */
@@ -124,7 +124,7 @@ function computeSocialInsuranceDetail(socialBase, fundBase, items, fundRate) {
 }
 
 /**
- * 按城市+月份解析政策后计算三险一金（带政策标签）
+ * 按城市+月份解析政策后计算社保公积金（带政策标签）
  */
 function computeSocialInsuranceFor(cityId, month, socialBase, fundBase) {
   const pol = resolvePolicyMemo(cityId, month);
@@ -134,7 +134,7 @@ function computeSocialInsuranceFor(cityId, month, socialBase, fundBase) {
 }
 
 /**
- * 兼容旧调用：按当前工资参数（当前月份）计算三险一金合计
+ * 兼容旧调用：按当前工资参数（当前月份）计算社保公积金合计
  */
 function computeSocialInsurance(socialBase, fundBase) {
   const now = new Date();

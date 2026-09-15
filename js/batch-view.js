@@ -435,7 +435,7 @@ function showBatchPreview(parsed, personKeys, personsMap, filename) {
             <span class="slider"></span>
           </label>
         </div>` : `
-        <div style="font-size:12px;color:var(--t-text-2);margin-bottom:16px;">三险一金按行内城市/整批城市政策自动计算：行内基数（按城市上下限 clamp）&gt; 整批设置/全局基数 &gt; 应发工资作基数（勾选后）；公积金比例按 行内「公积金比例」列 &gt; 「工资参数」档位；均无基数则记 0 并标注。整批城市与「按应发工资作基数」在上方「全局兜底设置」中配置。</div>`}
+        <div style="font-size:12px;color:var(--t-text-2);margin-bottom:16px;">社保公积金按行内城市/整批城市政策自动计算：行内基数（按城市上下限 clamp）&gt; 整批设置/全局基数 &gt; 应发工资作基数（勾选后）；公积金比例按 行内「公积金比例」列 &gt; 「工资参数」档位；均无基数则记 0 并标注。整批城市与「按应发工资作基数」在上方「全局兜底设置」中配置。</div>`}
         <button class="btn btn-primary" onclick="PageBatch.runBatchCalc()" style="width:100%;padding:12px;font-size:15px;"> 开始计算</button>
       </div>
     </div>
@@ -538,7 +538,7 @@ function renderBatchResults(results, filename, personKeys, personsMap, identityF
 
         const siTitle = r._siDetail
           ? ` title="养老 ¥${formatNum(r._siDetail.pension)} / 医疗 ¥${formatNum(r._siDetail.medical)} / 失业 ¥${formatNum(r._siDetail.unemployment)} / 公积金 ${formatRate(r._siDetail.fundRateUsed)} ¥${formatNum(r._siDetail.fund)}"`
-          : (r._siMissing ? ' title="行内与全局均未设置基数，三险一金按 0 计算"' : '');
+          : (r._siMissing ? ' title="行内与全局均未设置基数，社保公积金按 0 计算"' : '');
         const erTitle = siEmployerTooltip(r._siDetail);
         const isBonusRow = !!r._isBonus;
         const bonusSep = isBonusRow && r._bonusSeparate;
@@ -573,7 +573,7 @@ function renderBatchResults(results, filename, personKeys, personsMap, identityF
           ${idBadges}
           <span style="font-size:12px;color:var(--t-text-2);margin-left:8px;">共 ${rows.length} 条</span>
           <span style="font-size:12px;color:var(--t-text-2);margin-left:auto;">税额合计 <span style="color:var(--t-error);font-weight:600;">¥${formatNum(personTax)}</span></span>
-          ${isSalary ? `<span style="font-size:12px;color:var(--t-text-2);">单位社保 <span style="color:var(--t-text-2);font-weight:600;">¥${formatNum(personEmployer)}</span></span>
+          ${isSalary ? `<span style="font-size:12px;color:var(--t-text-2);">社保公积金(单位) <span style="color:var(--t-text-2);font-weight:600;">¥${formatNum(personEmployer)}</span></span>
           <span style="font-size:12px;color:var(--t-text-2);">企业总成本 <span style="color:var(--t-warning);font-weight:600;">¥${formatNum(round2(personPre + personEmployer))}</span></span>` : ''}
         </div>
         <div class="scroll-x" style="border:1px solid var(--t-border);border-radius:0 0 8px 8px;">
@@ -585,7 +585,7 @@ function renderBatchResults(results, filename, personKeys, personsMap, identityF
                 ${isSalary ? '<th>城市</th><th>政策年度</th>' : ''}
                 ${extraHeadCols}
                 <th>${preColLabel}</th>
-                ${isSalary ? '<th>三险一金(个人)</th><th>单位社保公积金</th><th>专项附加</th>' : ''}
+                ${isSalary ? '<th>社保公积金(个人)</th><th>社保公积金(单位)</th><th>专项附加</th>' : ''}
                 <th>${isSalary ? '累计应发金额' : '累计发放金额'}</th>
                 <th>累计减除费用</th>
                 <th>适用税率</th>
@@ -633,7 +633,7 @@ function renderBatchResults(results, filename, personKeys, personsMap, identityF
       </div>
       ${isSalary ? `
       <div class="summary-item">
-        <div class="label">单位社保公积金</div>
+        <div class="label">社保公积金(单位)</div>
         <div class="value" style="color:var(--t-text-2);">¥${formatNum(totalEmployer)}</div>
       </div>
       <div class="summary-item">

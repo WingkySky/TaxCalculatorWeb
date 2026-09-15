@@ -43,7 +43,7 @@ function runSelfTests() {
   salaryParams.extraDeduction = 1000;
 
   // —— 自定义城市（承接首版行为）：养老8% 医疗2% 失业0.5% 公积金12%，无上下限 ——
-  eq('自定义城市三险一金 = 基数×22.5%', computeSocialInsurance(10000, ''), 2250);
+  eq('自定义城市社保公积金 = 基数×22.5%', computeSocialInsurance(10000, ''), 2250);
 
   // —— 公积金月缴存额四舍五入取整到元 ——
   const customItems = resolvePolicy('custom', '2026-01').items;
@@ -109,7 +109,7 @@ function runSelfTests() {
   const sz = resolvePolicy('shenzhen', '2025-06');
   const gz8000 = computeSocialInsuranceDetail(8000, '', gz.items, 0.05);
   const sz8000 = computeSocialInsuranceDetail(8000, '', sz.items, 0.05);
-  isTrue('广州深圳同薪三险一金不同', gz8000.total !== sz8000.total);
+  isTrue('广州深圳同薪社保公积金不同', gz8000.total !== sz8000.total);
 
   // —— 批量「公积金比例」列：多写法解析与行内择档 ——
   eq('parseFundRate 5→0.05', parseFundRate('5'), 0.05);
@@ -149,7 +149,7 @@ function runSelfTests() {
   const snapshot = JSON.stringify(CITY_POLICY_LIBRARY);
   isTrue('政策库导入导出 roundtrip', JSON.stringify(JSON.parse(snapshot)) === snapshot);
 
-  // —— 工资薪金累计预扣（验收算例：月薪1万、三险一金2250、专项附加1000）——
+  // —— 工资薪金累计预扣（验收算例：月薪1万、社保公积金2250、专项附加1000）——
   const ctx = { socialInsurance: 2250, extraDeduction: 1000 };
   let cumIncome = 0, cumTax = 0, cumDeduction = 0;
   const monthly = [];
@@ -206,7 +206,7 @@ function runSelfTests() {
   })());
   isTrue('1120000 命中最末段，1120000.01 不命中', !!findBonusTrapZone(1120000) && findBonusTrapZone(1120000.01) == null);
 
-  // —— 年终奖方案对比：月薪1万×12（三险一金2250+附加1000）+ 发12月年终奖36000 ——
+  // —— 年终奖方案对比：月薪1万×12（社保公积金2250+附加1000）+ 发12月年终奖36000 ——
   const bonusEntries = [];
   for (let m = 1; m <= 12; m++) {
     bonusEntries.push({ month: '2026-' + String(m).padStart(2, '0'), amount: 10000, si: 2250, extra: 1000 });
@@ -329,7 +329,7 @@ function runSelfTests() {
 }
 
 // ==================== 批量计税流水线自检 ====================
-// 覆盖：processWithMapping 解析/映射/分组 → runBatchSalaryPass（三险一金兜底链、
+// 覆盖：processWithMapping 解析/映射/分组 → runBatchSalaryPass（社保公积金兜底链、
 // 城市链、累计链、反算）→ runBatchSalaryPerson（年终奖双方案择优）→
 // makeBatchBonusSeparateRow；劳务侧为引擎级 isGapMonth / isNewPolicy 判定
 // （逐行计算与渲染接线属 DOM 流程，留在浏览器冒烟覆盖）。
@@ -360,7 +360,7 @@ function runBatchPipelineTests() {
     { month, amount, socialBase: '', fundBase: '', fundRate: '', extraDeduction: '', bonus: '', city: '' },
     extra || {});
 
-  // —— 三险一金兜底链：行内基数 > 全局基数 > 按应发工资作基数（勾选）> 记 0 标注 ——
+  // —— 社保公积金兜底链：行内基数 > 全局基数 > 按应发工资作基数（勾选）> 记 0 标注 ——
   let rows = runBatchSalaryPass(group, [rec('2026-01', 10000, { socialBase: 10000 })], []);
   eq('批量兜底链·行内基数 10000×22.5%', rows[0]._siDetail.total, 2250);
   salaryParams.socialBase = 8000;
@@ -393,7 +393,7 @@ function runBatchPipelineTests() {
     rec('2026-02', 10000, { socialBase: 10000 }),
     rec('2026-02', 5000, { socialBase: 10000 })
   ], []);
-  isTrue('批量累计链·同月多笔减除与三险一金只计一次',
+  isTrue('批量累计链·同月多笔减除与社保公积金只计一次',
     rows[1].cumDeduction === rows[0].cumDeduction && rows[1]._cumSI === rows[0]._cumSI);
   rows = runBatchSalaryPass(group, [rec('2026-12', 10000, { socialBase: 10000 }), rec('2027-01', 8000, { socialBase: 8000 })], []);
   eq('批量累计链·跨年重新起算', rows[1].cumIncome, 8000);
@@ -687,7 +687,7 @@ function runExporterTests() {
   }, over || {});
   const OPTS = { chainKey: (r) => String(r.month || '').split('-')[0], cityOf: () => 'custom', nameOf: () => '测试', cityLabel: () => '自定义政策' };
 
-  // 1. 反算方向行：金额列为反算解出的应发，实发公式引用金额/三险一金/本期预扣
+  // 1. 反算方向行：金额列为反算解出的应发，实发公式引用金额/社保公积金/本期预扣
   const gRev = buildSalaryFormulaGrid(
     [mkRow({ preTax: 12337.11, postTax: 10000, cumTaxDue: 287.11, currentTax: 287.11, taxableIncome: 4087.11 })], OPTS);
   isTrue('公式导出·反算行金额列=反算应发且实发公式引用', gRev.rows[0][4].v === 12337.11 && gRev.rows[0][31].f === 'E2-M2-AE2');
@@ -718,9 +718,9 @@ function runExporterTests() {
   isTrue('公式导出·年终奖单独行不进累计链',
     gSep.rows[1][20] === null && gSep.rows[1][21] === null && gSep.rows[1][30].f === 'ROUND(MAX(0,E3*AA3-AB3),2)');
 
-  // 7. 缺基数行（_siDetail null）：三险一金列常量 0 无公式，税额公式仍在
+  // 7. 缺基数行（_siDetail null）：社保公积金列常量 0 无公式，税额公式仍在
   const gMissing = buildSalaryFormulaGrid([mkRow({ _siDetail: null })], OPTS);
-  isTrue('公式导出·缺基数行三险一金为常量 0 且无公式',
+  isTrue('公式导出·缺基数行社保公积金为常量 0 且无公式',
     gMissing.rows[0][12].v === 0 && !gMissing.rows[0][12].f && gMissing.rows[0][30].f.indexOf('MAX(0,') === 0);
 
   // 8. 身份列开关：身份证/电话列插入后表头与列映射整体右移
@@ -906,7 +906,7 @@ function runAnnualTests() {
   eq('汇算·收入额负数防呆', incomeOf('labor', -5), 0);
 
   // —— 预扣估算：工资/劳务与累计预扣引擎一致 ——
-  eq('汇算·工资预扣估算（1月1万，三险一金2250+附加1000）= 52.50',
+  eq('汇算·工资预扣估算（1月1万，社保公积金2250+附加1000）= 52.50',
     estimateSalaryWithholding([{ month: '2026-01', amount: 10000 }], 2250, 1000), 52.5);
   eq('汇算·劳务预扣估算（6月单笔3万）= 570',
     estimateLaborWithholding([{ month: '2026-06', amount: 30000 }]), 570);
@@ -1190,7 +1190,7 @@ function runMobileTableTests() {
     isTrue('紧凑表·正算输入列=应发工资', mHead.includes('>应发工资<'));
     isTrue('紧凑表·正算输出列=实发工资', mHead.includes('>实发工资<'));
     isTrue('紧凑表·合计行存在', /class="total-row"[\s\S]*?<td>合计<\/td>/.test(html));
-    isTrue('紧凑表·明细网格含工资专属列', html.includes('三险一金(个人)') && html.includes('单位社保公积金') && html.includes('专项附加'));
+    isTrue('紧凑表·明细网格含工资专属列', html.includes('社保公积金(个人)') && html.includes('社保公积金(单位)') && html.includes('专项附加'));
 
     // —— 方向文案分支：工资反算 ——
     multiDirection = 'reverse';
@@ -1205,7 +1205,7 @@ function runMobileTableTests() {
     PageMulti.renderMultiResults([mkRow('2026-01', 8000)], null);
     html = els['multi-result'].innerHTML;
     isTrue('紧凑表·劳务模式明细含预扣收入额', html.includes('本次预扣收入额'));
-    isTrue('紧凑表·劳务模式不含社保列', !html.includes('三险一金(个人)'));
+    isTrue('紧凑表·劳务模式不含社保列', !html.includes('社保公积金(个人)'));
 
     // —— 年终奖方案对比卡：正向双方案 → 移动卡；反算 reverseOnly → 维持文字卡 ——
     incomeType = 'salary';

@@ -44,7 +44,7 @@ function reportRowOf(r, isSalary, direction) {
   if (r._isBonus) notes.push(`年终奖（${r._bonusStrategy === 'combined' ? '并入综合所得' : '单独计税'}）`);
   if (r._isGap) notes.push('断月重置');
   if (r._isOldPolicy) notes.push('旧政策');
-  if (r._siMissing) notes.push('三险一金未设置');
+  if (r._siMissing) notes.push('社保公积金未设置');
   return {
     month: r.month,
     inAmt: Math.round((Number(inAmt) || 0) * 100) / 100,
@@ -70,7 +70,7 @@ function buildMultiReportData(rows, env) {
     isSalary,
     inLabel: env.inLabel,
     outLabel: env.outLabel,
-    siLabel: isSalary ? '三险一金(个人)' : '本次预扣收入额',
+    siLabel: isSalary ? '社保公积金(个人)' : '本次预扣收入额',
     rows: list,
     totals: {
       in: sum(list, 'inAmt'), si: sum(list, 'si'),
@@ -120,7 +120,7 @@ function buildBatchReportData(rows, env) {
     isSalary,
     inLabel: env.inLabel,
     outLabel: env.outLabel,
-    siLabel: isSalary ? '三险一金(个人)' : '本次预扣收入额',
+    siLabel: isSalary ? '社保公积金(个人)' : '本次预扣收入额',
     personCount: groups.length,
     groups,
     totals: { in: sum(all, 'inAmt'), si: sum(all, 'si'), tax: sum(all, 'tax'), out: sum(all, 'out') },
@@ -147,7 +147,7 @@ function collectMultiEnv() {
       ? computeExtraDetailFor(salaryParams.extraDetail, '').total
       : salaryParams.extraDeduction;
     params.push(['专项附加扣除', `¥${formatNum(extraTotal)}/月（${salaryParams.extraDetail && salaryParams.extraDetail.on ? '分项合计' : '单一总额'}）`]);
-    policyLine = '三险一金按参保城市适用年度政策计算（逐险种按基数上下限 clamp，公积金月缴存额取整到元）。';
+    policyLine = '社保公积金按参保城市适用年度政策计算（逐险种按基数上下限 clamp，公积金月缴存额取整到元）。';
   } else {
     const gapEl = document.getElementById('multi-gap-toggle');
     params.push(['断月重置', gapEl && gapEl.checked ? '开启（间隔超 1 个月累计归零）' : '关闭']);
@@ -170,7 +170,7 @@ function collectBatchEnv() {
     const city = batchCityId ? CITY_POLICY_LIBRARY[batchCityId] : null;
     params.push(['整批参保城市', city ? city.name : '跟随「工资参数」中的城市']);
     params.push(['无基数时按应发工资作基数', batchGrossAsBase ? '开启' : '关闭']);
-    policyLine = '取值顺序：行内「城市/社保基数/公积金比例」列 > 整批设置 > 「工资参数」；三险一金按城市政策计算（个人+单位），均无基数记 0 并标注。';
+    policyLine = '取值顺序：行内「城市/社保基数/公积金比例」列 > 整批设置 > 「工资参数」；社保公积金按城市政策计算（个人+单位），均无基数记 0 并标注。';
   } else {
     params.push(['断月重置', batchGapReset ? '开启（间隔超 1 个月累计归零）' : '关闭']);
     policyLine = '2025 年 10 月 1 日起适用新政策（累计预扣法），此前月份按旧政策（不扣税）。';

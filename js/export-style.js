@@ -42,8 +42,8 @@
   const GROUPS = [
     { id: 'base',   label: '基本信息',        keys: ['name', 'idCard', 'phone', 'bankCard', 'month', 'city', 'project'], fill: '#FAFAFA', color: '#595959' },
     { id: 'input',  label: '收入与基数输入',  keys: ['amount', 'socialBase', 'fundBase', 'fundRate'],                    fill: '#E6F4FF', color: '#0958D9' },
-    { id: 'siMe',   label: '三险一金（个人）', keys: ['pension', 'medical', 'unemployment', 'fund', 'siTotal'],           fill: '#E6FFFB', color: '#08979C' },
-    { id: 'siEr',   label: '三险一金（单位）', keys: ['erPension', 'erMedical', 'erUnemployment', 'erInjury', 'erFund', 'erTotal'], fill: '#F9F0FF', color: '#722ED1' },
+    { id: 'siMe',   label: '社保公积金（个人）', keys: ['pension', 'medical', 'unemployment', 'fund', 'siTotal'],           fill: '#E6FFFB', color: '#08979C' },
+    { id: 'siEr',   label: '社保公积金（单位）', keys: ['erPension', 'erMedical', 'erUnemployment', 'erInjury', 'erFund', 'erTotal'], fill: '#F9F0FF', color: '#722ED1' },
     { id: 'deduct', label: '扣除与累计',      keys: ['extra', 'deduct', 'cumAmount', 'cumSI', 'cumExtra', 'cumDeduct', 'cumTaxable'], fill: '#FFF7E6', color: '#D48806' },
     { id: 'tax',    label: '税额计算',        keys: ['rate', 'quick', 'cumDue', 'cumPaid', 'curTax'],                    fill: '#FFF1F0', color: '#CF1322' },
     { id: 'result', label: '结果与成本',      keys: ['postTax', 'cost', 'note'],                                          fill: '#F6FFED', color: '#389E0D' }
@@ -121,7 +121,7 @@
 
   const SUMMARY = {
     sheetName: '按人年度汇总',
-    headers: ['姓名', '年度', '累计应发', '个人三险一金', '全年缴税', '全年实发', '企业用工成本'],
+    headers: ['姓名', '年度', '累计应发', '个人社保公积金', '全年缴税', '全年实发', '企业用工成本'],
     /* 数据列 key：与明细网格 cols 对应（name/year 为分组成员列） */
     keys: ['name', 'year', 'amount', 'siTotal', 'curTax', 'postTax', 'cost'],
     numFmt: AMOUNT_FMT,

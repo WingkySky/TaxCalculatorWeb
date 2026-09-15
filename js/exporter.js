@@ -116,9 +116,9 @@ function buildSalaryFormulaGrid(rows, opts) {
   if (showBank) headers.push('银行卡号');
   headers.push(
     '月份', '城市', '项目', '应发工资(税前)', '社保基数', '公积金基数', '公积金比例',
-    '养老(个人)', '医疗(个人)', '失业(个人)', '公积金(个人)', '三险一金合计(个人)',
+    '养老(个人)', '医疗(个人)', '失业(个人)', '公积金(个人)', '个人合计',
     '养老(单位)', '医疗(单位)', '失业(单位)', '工伤(单位)', '公积金(单位)', '单位合计',
-    '专项附加扣除', '当月减除费用', '累计应发', '累计三险一金', '累计专项附加', '累计减除费用',
+    '专项附加扣除', '当月减除费用', '累计应发', '累计社保公积金', '累计专项附加', '累计减除费用',
     '累计应纳税所得额', '适用税率', '速算扣除数', '累计应纳税额', '累计已预扣', '本期预扣税额',
     '实发工资', '企业用工总成本', '政策/备注'
   );
@@ -177,7 +177,7 @@ function buildSalaryFormulaGrid(rows, opts) {
       cells[C.fundRate] = { v: 0 };
     }
 
-    /* 三险一金：个人部分（公积金按 ÷1 取整到元）与单位部分（含工伤） */
+    /* 社保公积金：个人部分（公积金按 ÷1 取整到元）与单位部分（含工伤） */
     if (si && !isBonusSep) {
       const baseRef = `${col(C.socialBase)}${er}`;
       const fundBaseRef = `${col(C.fundBase)}${er}`;
@@ -577,7 +577,7 @@ function exportBatchExcelFormula() {
       if (r.policyYearLabel) parts.push(r.policyYearLabel);
       if (batchDirection === 'reverse') parts.push('应发为税后反算值');
       if (r._isBonus) parts.push(r._bonusStrategy === 'combined' ? '年终奖并入综合所得' : '年终奖单独计税（÷12 定档）');
-      if (r._siMissing) parts.push('三险一金未设置基数，按 0 计');
+      if (r._siMissing) parts.push('社保公积金未设置基数，按 0 计');
       return parts.join('；');
     }
   }, { title: '批量工资个税明细（公式版）', sheetName: '批量工资明细', fileName: '批量工资个税明细(公式版).xlsx', metaExtra: people + ' 人 · ' });

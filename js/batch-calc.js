@@ -44,7 +44,7 @@ function groupPersons(parsed) {
 
 /* ==================== 批量·工资薪金单人计税流水线 ==================== */
 
-/** 年终奖合成记录：金额取「年终奖」列，不参与三险一金与专项附加 */
+/** 年终奖合成记录：金额取「年终奖」列，不参与社保公积金与专项附加 */
 function makeBatchBonusSynthRec(b) {
   return {
     ...b,
@@ -108,7 +108,7 @@ function runBatchSalaryPass(group, records, bonusRecs) {
     /* 公积金比例：行内「公积金比例」列 > 「工资参数」全局档位 */
     const effFundRate = (d.fundRate !== '' && d.fundRate != null) ? Number(d.fundRate) : salaryParams.fundRate;
 
-    /* 三险一金：年终奖行不缴社保；工资行按 行内基数×城市政策 > 全局基数 > 按应发工资作基数（勾选时）> 0 并标注 */
+    /* 社保公积金：年终奖行不缴社保；工资行按 行内基数×城市政策 > 全局基数 > 按应发工资作基数（勾选时）> 0 并标注 */
     let si;
     let siD = null;
     if (d._isBonus) {
@@ -140,8 +140,8 @@ function runBatchSalaryPass(group, records, bonusRecs) {
         ? Math.max(0, Number(d.extraDeduction) || 0)
         : 0);
 
-    /* 同月多笔合并：减除费用与三险一金同月只计一次；无月份的记录各自独立起算。
-       实发口径下，当月三险一金只从首笔记录中扣减，后续记录不再重复扣。 */
+    /* 同月多笔合并：减除费用与社保公积金同月只计一次；无月份的记录各自独立起算。
+       实发口径下，当月社保公积金只从首笔记录中扣减，后续记录不再重复扣。 */
     const hasMonth = d.month && d.month !== '-';
     const isFirstOfMonth = !hasMonth || d.month !== lastMonth;
     if (isFirstOfMonth) {
