@@ -380,6 +380,14 @@ function runBatchPipelineTests() {
   rows = runBatchSalaryPass(group, [rec('2026-01', 10000, { socialBase: 10000, city: '火星' })], []);
   isTrue('批量城市链·未知城市回退工资参数并标注', rows[0]._cityUnknown === true && rows[0]._cityKey === 'custom' && rows[0].cityName.indexOf('未识别') >= 0);
 
+  // —— 专项附加：批量导入未录入 → 按 0 计，不套用「工资参数」全局值（专项附加因人而异，2026-09）——
+  // 此处 salaryParams.extraDeduction = 1000（套件初始化设置），恰好用于证明全局值不再泄漏进批量。
+  rows = runBatchSalaryPass(group, [rec('2026-01', 10000, { socialBase: 10000 })], []);
+  eq('批量专项附加·列缺失按 0（全局 1000 不套用）', rows[0].cumDeduction, 7250);
+  isTrue('批量专项附加·结果行专项附加为 0', rows[0].extraDeduction === 0);
+  rows = runBatchSalaryPass(group, [rec('2026-01', 10000, { socialBase: 10000, extraDeduction: 500 })], []);
+  eq('批量专项附加·行内值仍优先', rows[0].cumDeduction, 7750);
+
   // —— 累计链：同月多笔只计一次、跨年重新起算 ——
   rows = runBatchSalaryPass(group, [
     rec('2026-02', 10000, { socialBase: 10000 }),
@@ -447,6 +455,86 @@ function runBatchPipelineTests() {
   const lsGroup = window._batchParsed.personsMap[lsKey];
   const lsRows = runBatchSalaryPerson(lsGroup, lsGroup.records);
   isTrue('批量端到端·李四无基数记 0 标注', lsRows[0]._siMissing === true && lsRows[0]._siDetail === null);
+
+  // —— 月份格式覆盖：Excel 日期单元格 m/d/yy 及常见变体（用户模板事故回归，2026-09）——
+  const nm = BatchParse.normalizeMonth;
+  isTrue('月份格式·6/1/26（Excel m/d/yy）→ 2026-06', nm('6/1/26') === '2026-06');
+  isTrue('月份格式·6/1/2026 → 2026-06', nm('6/1/2026') === '2026-06');
+  isTrue('月份格式·6-1-26 连字符 → 2026-06', nm('6-1-26') === '2026-06');
+  isTrue('月份格式·6/1/26 0:00 带时间 → 2026-06', nm('6/1/26 0:00') === '2026-06');
+  isTrue('月份格式·12/5/26 → 2026-12', nm('12/5/26') === '2026-12');
+  isTrue('月份格式·25/1/26 首段超12转日/月/年 → 2026-01', nm('25/1/26') === '2026-01');
+  isTrue('月份格式·13/13/26 双超不产出伪年月', nm('13/13/26') === '13/13/26');
+  isTrue('月份格式·6/1 无年份按当年', nm('6/1') === `${new Date().getFullYear()}-06`);
+  isTrue('月份格式·6月1日 按当年', nm('6月1日') === `${new Date().getFullYear()}-06`);
+  isTrue('月份格式·2026/6/1 完整斜分日期', nm('2026/6/1') === '2026-06');
+  isTrue('月份格式·2026年6月1日', nm('2026年6月1日') === '2026-06');
+  isTrue('月份格式·September-25 全称英文月 → 2025-09', nm('September-25') === '2025-09');
+  isTrue('月份格式·13月 非法不产出伪年月', nm('13月') === '13月');
+  isTrue('月份格式·2026-01（原有行为回归）', nm('2026-01') === '2026-01');
+  isTrue('月份格式·1月（原有当年行为回归）', nm('1月') === `${new Date().getFullYear()}-01`);
+  isTrue('月份提示·9月+提示年份2025 → 2025-09', BatchParse.normalizeMonthWithHint('9月', '2025年') === '2025-09');
+  isTrue('月份提示·6/1+提示年份2025 → 2025-06', BatchParse.normalizeMonthWithHint('6/1', '2025年') === '2025-06');
+  isTrue('月份提示·9+提示年份2025 → 2025-09（历史行为保持）', BatchParse.normalizeMonthWithHint('9', '2025年') === '2025-09');
+  isTrue('月份提示·6/1/26 显式年份不受提示影响', BatchParse.normalizeMonthWithHint('6/1/26', '2025年') === '2026-06');
+  isTrue('排序时间·6/1/26 → 2026-06-01', BatchParse.extractSortDateTime('6/1/26').startsWith('2026-06-01'));
+  isTrue('排序时间·25/1/26 日/月/年 → 2026-01-25', BatchParse.extractSortDateTime('25/1/26').startsWith('2026-01-25'));
+
+  // —— 用户模板事故端到端：月份列是 Excel 日期单元格（raw:false 显示 6/1/26~9/1/26）——
+  // 事故：旧解析不认 m/d/yy 原样透传 → 累计链按行复位 + 政策全部回落最新年度，静默错算。
+  const tplRows = [
+    ['姓名', '身份证号', '月份', '应发工资', '城市', '社保基数', '公积金基数', '公积金比例', '专项附加扣除', '年终奖'],
+    ['罗靖', '440102198111244849', '6/1/26', '45,232.00', '广州', '43,915.00', '43,915.00', '10', '', ''],
+    ['罗靖', '440102198111244849', '7/1/26', '45,232.00', '广州', '47,209.00', '47,209.00', '10', '', ''],
+    ['罗靖', '440102198111244849', '8/1/26', '45,232.00', '广州', '47,209.00', '47,209.00', '10', '', ''],
+    ['罗靖', '440102198111244849', '9/1/26', '45,232.00', '广州', '47,209.00', '47,209.00', '10', '', '']
+  ];
+  const tplAnalysis = BatchParse.analyzeSheet('工资薪金个税计算模板', tplRows, '', '');
+  isTrue('模板事故·月份/金额列自动映射', tplAnalysis.autoMap.monthCol === 2 && tplAnalysis.autoMap.amountCol === 3);
+  PageBatch.processWithMapping(
+    tplRows.map((r, i) => {
+      const tagged = r.slice();
+      tagged._sheetMonthHint = tplAnalysis.monthHint;
+      tagged._sheetName = '工资薪金个税计算模板';
+      tagged._sourceRowIndex = i;
+      tagged._fileName = '工资薪金个税计算模板.xlsx';
+      return tagged;
+    }),
+    { name: 0, idCard: 1, month: 2, amount: 3, city: 4, socialBase: 5, fundBase: 6, fundRate: 7, extraDeduction: 8, bonus: 9 },
+    '工资薪金个税计算模板.xlsx', []);
+  const tplParsed = window._batchParsed.parsed;
+  isTrue('模板事故·四行月份归一 2026-06~09', tplParsed.length === 4 &&
+    tplParsed[0].month === '2026-06' && tplParsed[1].month === '2026-07' &&
+    tplParsed[2].month === '2026-08' && tplParsed[3].month === '2026-09');
+  isTrue('模板事故·月份闸门零告警', (window._batchParsed.monthWarnings || []).length === 0);
+  isTrue('模板事故·累计链跨月递进不再复位', (() => {
+    const g = window._batchParsed.personsMap[window._batchParsed.personKeys[0]];
+    const gRows = runBatchSalaryPerson(g, g.records);
+    return gRows[3].cumIncome === 180928 && gRows[1].currentTax > gRows[0].currentTax && gRows[3]._yearFallback === false;
+  })());
+
+  // —— 月份闸门：无法识别/为空/无月份列 → 按当前年月兜底 + 显式告警（预览区可见）——
+  const origGetByIdGate = document.getElementById;
+  const gateEls = {};
+  try {
+    document.getElementById = id => (gateEls[id] = gateEls[id] || origGetByIdGate(id));
+    PageBatch.processWithMapping([
+      ['张三', '上半年', '10000'],
+      ['张三', '', '8000'],
+      ['李四', '2026-03', '9000']
+    ], { name: 0, month: 1, amount: 2 }, '闸门自测.csv');
+    const gw = window._batchParsed.monthWarnings || [];
+    isTrue('月份闸门·无法识别与为空行各告警一次', gw.length === 2 &&
+      gw.some(w => w.type === 'unrecognized' && w.raw === '上半年') && gw.some(w => w.type === 'empty'));
+    isTrue('月份闸门·所有行月份均为 YYYY-MM', window._batchParsed.parsed.every(p => /^\d{4}-\d{2}$/.test(p.month)));
+    isTrue('月份闸门·预览区渲染告警条', gateEls['batch-preview'].innerHTML.indexOf('月份信息不完整') >= 0);
+
+    PageBatch.processWithMapping([['张三', '10000']], { name: 0, amount: 1 }, '无月份列.csv');
+    const ncw = window._batchParsed.monthWarnings || [];
+    isTrue('月份闸门·无月份列记 noColumn 告警', ncw.length === 1 && ncw[0].type === 'noColumn');
+  } finally {
+    document.getElementById = origGetByIdGate;
+  }
 
   // —— 劳务批量引擎级判定（逐行接线属 DOM 流程，见浏览器冒烟）——
   isTrue('劳务断月重置·间隔超 1 个月判定', isGapMonth('2025-10', '2026-01') === true && isGapMonth('2026-01', '2026-02') === false);

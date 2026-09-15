@@ -53,7 +53,8 @@ function excelSerialToDate(serial) {
 
 /**
  * 标准化月份格式为 YYYY-MM
- * 支持：2024-01, 2024/01, 2024年1月, 2024.01, 202401, 1月, Excel序列号 等
+ * 支持：2024-01, 2024/01, 2024年1月, 2024.01, 202401, 1月, 6月1日, 6/1, 6/1/26, 6/1/2026,
+ *       Jan-25, December-25, Excel序列号 等；无法识别时原样返回（由调用方闸门兜底告警）
  */
 function normalizeMonth(raw) {
   if (!raw || raw === '-') return '-';
@@ -68,23 +69,36 @@ function normalizeMonth(raw) {
     }
   }
 
-  // 2024年1月 / 2024年01月
+  // 2024年1月 / 2024年01月 / 2024年1月15日
   let m = s.match(/(\d{4})\s*年\s*(\d{1,2})\s*月?/);
-  if (m) return `${m[1]}-${m[2].padStart(2, '0')}`;
+  if (m && parseInt(m[2], 10) >= 1 && parseInt(m[2], 10) <= 12) return `${m[1]}-${m[2].padStart(2, '0')}`;
 
-  // 1月 / 01月（当年）
-  m = s.match(/^(\d{1,2})\s*月$/);
+  // 6月1日 / 6月1号（无年份，按当年）
+  m = s.match(/^(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]?$/);
   if (m) {
-    const year = new Date().getFullYear();
-    return `${year}-${m[1].padStart(2, '0')}`;
+    const mon = parseInt(m[1], 10);
+    if (mon >= 1 && mon <= 12 && parseInt(m[2], 10) >= 1 && parseInt(m[2], 10) <= 31) {
+      const year = new Date().getFullYear();
+      return `${year}-${String(mon).padStart(2, '0')}`;
+    }
   }
 
-  // Dec-24 / Jan-25 / Feb-25 等 Excel 英文月份缩写
+  // 1月 / 01月（当年）；13月等非法月份不产出伪年月
+  m = s.match(/^(\d{1,2})\s*月$/);
+  if (m) {
+    const mon = parseInt(m[1], 10);
+    if (mon >= 1 && mon <= 12) {
+      const year = new Date().getFullYear();
+      return `${year}-${String(mon).padStart(2, '0')}`;
+    }
+  }
+
+  // Dec-24 / Jan-25 / September-25 等 Excel 英文月份（3-9 字母，取前 3 位判月，兼容 sept）
   const MONTH_EN = { jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',
                      jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12' };
-  m = s.match(/^([A-Za-z]{3})[-\/.\s]?(\d{2,4})$/);
+  m = s.match(/^([A-Za-z]{3,9})[-\/.\s]?(\d{2,4})$/);
   if (m) {
-    const monKey = m[1].toLowerCase();
+    const monKey = m[1].toLowerCase().slice(0, 3);
     const monNum = MONTH_EN[monKey];
     if (monNum) {
       let yr = parseInt(m[2]);
@@ -100,6 +114,29 @@ function normalizeMonth(raw) {
   // 2024-01-15 / 2024/01/15（取年月），也支持后面带时间的
   m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})(?:\s+\d{1,2}:\d{1,2}(?::\d{1,2})?)?$/);
   if (m) return `${m[1]}-${m[2].padStart(2, '0')}`;
+
+  // 月/日/年：6/1/26、6-1-2026（Excel m/d/yy 短日期最常见的导出/显示形态），可带时间后缀
+  m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})(?:\s+\d{1,2}:\d{1,2}(?::\d{1,2})?)?$/);
+  if (m) {
+    const mon = parseInt(m[1], 10);
+    const day = parseInt(m[2], 10);
+    let yr = parseInt(m[3], 10);
+    if (yr < 100) yr += 2000;
+    if (mon >= 1 && mon <= 12 && day >= 1 && day <= 31) return `${yr}-${String(mon).padStart(2, '0')}`;
+    // 首段超出 12 不可能是月 → 按日/月/年理解（如 25/1/26）
+    const monAlt = parseInt(m[2], 10);
+    if (monAlt >= 1 && monAlt <= 12 && mon >= 1 && mon <= 31) return `${yr}-${String(monAlt).padStart(2, '0')}`;
+  }
+
+  // 6/1（无年份的月/日，按当年）；带 . 或 - 分隔的裸数字（如小数 10.5、区间 6-1）不在此列以免误判
+  m = s.match(/^(\d{1,2})\/(\d{1,2})$/);
+  if (m) {
+    const mon = parseInt(m[1], 10);
+    if (mon >= 1 && mon <= 12 && parseInt(m[2], 10) >= 1 && parseInt(m[2], 10) <= 31) {
+      const year = new Date().getFullYear();
+      return `${year}-${String(mon).padStart(2, '0')}`;
+    }
+  }
 
   // 兜底：原样返回
   return s;
@@ -149,15 +186,22 @@ function buildMonthFromParts(yearHint, monthValue) {
 }
 
 function normalizeMonthWithHint(raw, monthHint = '') {
-  const normalized = normalizeMonth(raw);
-  if (/^\d{4}-\d{2}$/.test(normalized)) return normalized;
   const rawText = String(raw || '').trim();
-  if (/^\d{1,2}$/.test(rawText)) {
-    const yearHint = extractYearHint(monthHint);
-    const built = buildMonthFromParts(yearHint, rawText);
-    if (built) return built;
+  const yearHint = extractYearHint(monthHint);
+  // 月份明确、年份缺省的形态（9 / 9月 / 6/1 / 6月1日）：提示年份优先，无提示按当年；
+  // 纯数字无提示时保持原样返回，交由上层按行扫描/当前月兜底（历史行为）
+  const bare = rawText.match(/^(\d{1,2})\s*月(?:\s*\d{1,2}\s*[日号]?)?$/)
+    || rawText.match(/^(\d{1,2})\/\d{1,2}$/)
+    || rawText.match(/^(\d{1,2})$/);
+  if (bare) {
+    const mon = parseInt(bare[1], 10);
+    if (mon >= 1 && mon <= 12) {
+      const built = buildMonthFromParts(yearHint, String(mon));
+      if (built) return built;
+      return normalizeMonth(rawText);
+    }
   }
-  return normalized;
+  return normalizeMonth(raw);
 }
 
 function extractSortDateTime(raw) {
@@ -189,6 +233,32 @@ function extractSortDateTime(raw) {
     const mi = String(m[5] || '00').padStart(2, '0');
     const ss = String(m[6] || '00').padStart(2, '0');
     return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+  }
+
+  // 月/日/年：6/1/26、6-1-2026（Excel m/d/yy 短日期）；首段超 12 视为日/月/年
+  m = text.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+  if (m) {
+    let mon = parseInt(m[1], 10);
+    let day = parseInt(m[2], 10);
+    let yr = parseInt(m[3], 10);
+    if (yr < 100) yr += 2000;
+    if (mon > 12 && day >= 1 && day <= 12) { const tmp = mon; mon = day; day = tmp; }
+    if (mon >= 1 && mon <= 12 && day >= 1 && day <= 31) {
+      const hh = String(m[4] || '00').padStart(2, '0');
+      const mi = String(m[5] || '00').padStart(2, '0');
+      const ss = String(m[6] || '00').padStart(2, '0');
+      return `${yr}-${String(mon).padStart(2, '0')}-${String(day).padStart(2, '0')} ${hh}:${mi}:${ss}`;
+    }
+  }
+
+  // 6/1、6月1日（无年份，按当年取排序键）
+  m = text.match(/^(\d{1,2})\/(\d{1,2})$/) || text.match(/^(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]?$/);
+  if (m) {
+    const mon = parseInt(m[1], 10);
+    const day = parseInt(m[2], 10);
+    if (mon >= 1 && mon <= 12 && day >= 1 && day <= 31) {
+      return `${new Date().getFullYear()}-${String(mon).padStart(2, '0')}-${String(day).padStart(2, '0')} 00:00:00`;
+    }
   }
 
   return '';

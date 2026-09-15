@@ -291,6 +291,25 @@ function showBatchPreview(parsed, personKeys, personsMap, filename) {
   // 检测哪些身份列有数据
   const { hasIdCard, hasPhone, hasBankCard } = identityFlagsOf(parsed);
 
+  // 月份闸门告警：无法识别/为空/无月份列的行已按当前年月兜底，显式展示绝不静默
+  const monthWarnings = (window._batchParsed && window._batchParsed.monthWarnings) || [];
+  let monthWarningsHTML = '';
+  if (monthWarnings.length) {
+    const noCol = monthWarnings.filter(w => w.type === 'noColumn');
+    const perRow = monthWarnings.filter(w => w.type !== 'noColumn');
+    const lines = [];
+    if (noCol.length) lines.push(`未识别到「月份」列：${noCol.length} 条记录已按当前年月 ${noCol[0].resolved} 测算`);
+    if (perRow.length) {
+      const detail = perRow.slice(0, 5).map(w => `第${w.sourceRowIndex + 1}行「${w.raw || '空'}」→ ${w.resolved}`).join('、');
+      lines.push(`月份无法识别或为空：${perRow.length} 条记录已按当前年月测算（${detail}${perRow.length > 5 ? ' 等' : ''}）`);
+    }
+    monthWarningsHTML = `
+      <div style="margin-bottom:20px;padding:12px 16px;background:var(--t-warning-bg);border-radius:8px;border:1px solid var(--t-warning);">
+        <div style="font-size:13px;font-weight:600;color:var(--t-warning);margin-bottom:4px;">⚠ 月份信息不完整（已按当前年月兜底测算，请核对后重传）</div>
+        ${lines.map(l => `<div style="font-size:12px;color:var(--t-text-2);">${l}</div>`).join('')}
+      </div>`;
+  }
+
   // 按人统计
   const personStats = personKeys.map(key => {
     const g = personsMap[key];
@@ -337,6 +356,8 @@ function showBatchPreview(parsed, personKeys, personsMap, filename) {
         </label>
         <button class="btn btn-secondary" style="padding:6px 14px;font-size:12px;" onclick="PageBatch.resetBatch()"> 重置全部</button>
       </div>
+
+      ${monthWarningsHTML}
 
       <!-- 人员汇总 + 数据预览（合并为紧凑区块） -->
       <div style="margin-bottom:20px;">

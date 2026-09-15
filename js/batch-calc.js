@@ -7,7 +7,7 @@
 'use strict';
   const { round2 } = TaxUtils;
   const { calcBonusTaxSeparate, calcTaxOldPolicy, calcTaxReverseOldPolicy, getMonthlyBracket, isGapMonth, isNewPolicy, TAX_STRATEGIES } = TaxEngine;
-  const { getExtraDeductionFor, computeSocialInsuranceDetail } = SocialIns;
+  const { computeSocialInsuranceDetail } = SocialIns;
   const { CITY_POLICY_LIBRARY, findCityKey, resolvePolicyMemo } = PolicyLib;
   const { calcTaxByDirection, insertBonusRowSorted } = PageShared;
 /** 人员唯一标识：有身份证优先用身份证，否则综合姓名/电话/银行卡 */
@@ -132,11 +132,13 @@ function runBatchSalaryPass(group, records, bonusRecs) {
     si = round2(Math.max(0, Number(si) || 0));
     const siMissing = !d._isBonus && !siD;
 
-    /* 专项附加：行内总额优先 > 全局分项明细（按月，含职业资格取证月）> 全局单一总额 */
+    /* 专项附加：只认行内「专项附加扣除」列值，未录入一律按 0。
+       专项附加因人而异（子女教育/房贷/赡养老人等），批量导入未录入即代表无，
+       不套用「工资参数」全局值——全局兜底会把一个人的扣除错套到所有人头上。 */
     const extra = d._isBonus ? 0
       : ((d.extraDeduction !== '' && d.extraDeduction != null)
         ? Math.max(0, Number(d.extraDeduction) || 0)
-        : getExtraDeductionFor(d.month).total);
+        : 0);
 
     /* 同月多笔合并：减除费用与三险一金同月只计一次；无月份的记录各自独立起算。
        实发口径下，当月三险一金只从首笔记录中扣减，后续记录不再重复扣。 */

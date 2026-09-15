@@ -40,6 +40,7 @@ function processWithMapping(dataRows, colMap, filename, sourceItems = []) {
   window._batchResults = null;
   document.getElementById('batch-result').style.display = 'none';
 
+  const monthWarnings = [];
   const parseRowsWithMap = (rows, rowColMap) => {
     const parsedRows = [];
     rows.forEach(row => {
@@ -80,18 +81,28 @@ function processWithMapping(dataRows, colMap, filename, sourceItems = []) {
         if (inferredMonth) month = inferredMonth;
       }
 
-      // 所有途径都未得到月份时，默认按当前年月测算（即适用当前新政策）
-      if (!month || month === '-') {
-        const now = new Date();
-        month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      }
-
       const personKey = buildPersonKey({ name, idCard, phone, bankCard });
 
       if (amount > 0 && rowHasUsableIdentity({ name, idCard, phone, bankCard })) {
-        const monthRaw = rowColMap.month != null ? row[rowColMap.month] : '';
+        const monthRaw = String(rowColMap.month != null ? (row[rowColMap.month] == null ? '' : row[rowColMap.month]) : '').trim();
+        /* 月份闸门：所有解析途径（月份列/表内提示/行扫描）走完后仍不是 YYYY-MM 时，
+           统一按当前年月测算并显式记录告警——绝不让非法月份透传进计税链
+           （非法月份会使累计链按行复位、政策匹配回落最新年度，静默错算）。 */
+        if (!/^\d{4}-\d{2}$/.test(month)) {
+          const now = new Date();
+          const fallbackYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+          monthWarnings.push({
+            type: rowColMap.month == null ? 'noColumn' : (monthRaw ? 'unrecognized' : 'empty'),
+            sourceSheet: row._sheetName || '',
+            sourceFile: row._fileName || '',
+            sourceRowIndex: row._sourceRowIndex ?? 0,
+            raw: monthRaw,
+            resolved: fallbackYM
+          });
+          month = fallbackYM;
+        }
         parsedRows.push({
-          month: month || '-',
+          month,
           monthRaw,
           sortTime: extractSortDateTime(monthRaw),
           amount,
@@ -156,7 +167,7 @@ function processWithMapping(dataRows, colMap, filename, sourceItems = []) {
 
   const { personKeys, personsMap } = groupPersons(parsed);
 
-  window._batchParsed = { parsed, personKeys, personsMap, sourceItems };
+  window._batchParsed = { parsed, personKeys, personsMap, sourceItems, monthWarnings };
   window._batchFilename = filename;
   showBatchPreview(parsed, personKeys, personsMap, filename);
 }
