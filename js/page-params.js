@@ -199,17 +199,77 @@ function refreshBatchCitySelect() {
   sel.value = batchCityId || '';
 }
 
+/** 预览月份：参数卡的月份输入值，缺省当前月 */
+function getPreviewYM() {
+  const now = new Date();
+  const nowYM = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  const prevInput = document.getElementById('sp-preview-month');
+  if (prevInput && !prevInput.value) prevInput.value = nowYM;
+  return (prevInput && /^\d{4}-\d{2}$/.test(prevInput.value)) ? prevInput.value : nowYM;
+}
+
+function pmEscHtml(v) {
+  return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/** 前台轻徽标 HTML（纯函数，供自检）：custom 城市不出徽标；prov 缺失不渲染，永不报错 */
+function provenanceBadgeHtml(cityKey, yearKey, prov) {
+  if (!cityKey || cityKey === 'custom' || !prov) return '';
+  const status = prov.status || 'unverified';
+  const text = (yearKey || '') + '年度 · ' + PolicyLib.statusLabel(status) + (status === 'confirmed' ? ' ✓' : '');
+  return `<button type="button" class="pol-status-badge is-clickable pol-status-${status}"
+    onclick="PageParams.showProvenanceModal()" title="点击查看政策来源与核查信息">${pmEscHtml(text)}</button>`;
+}
+
+/** 点击徽标弹出来源浮层：年度、状态、最近核查、口径备注、来源列表（文号/发布方/日期/确认内容/原文链接） */
+function showProvenanceModal() {
+  const pol = resolvePolicy(salaryParams.cityId, getPreviewYM());
+  if (!pol || !pol.provenance || pol.cityKey === 'custom') return;
+  const p = pol.provenance;
+  const parts = [];
+  parts.push(`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+    <div style="font-size:14px;font-weight:600;">政策来源与核查</div>
+    <button type="button" class="btn btn-secondary btn-sm" data-close="1">关闭</button>
+  </div>`);
+  parts.push(`<div style="font-size:12px;color:var(--t-text-2);margin-top:8px;">适用政策：${pmEscHtml(pol.label)}</div>`);
+  parts.push(`<div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <span class="pol-status-badge pol-status-${p.status}">${pmEscHtml(PolicyLib.statusLabel(p.status))}</span>
+    ${p.checkedAt ? `<span style="font-size:12px;color:var(--t-text-2);">最近核查 ${pmEscHtml(p.checkedAt)}</span>` : ''}
+  </div>`);
+  if (p.note) parts.push(`<div style="font-size:12px;margin-top:8px;">口径备注：${pmEscHtml(p.note)}</div>`);
+  if (p.sources.length) {
+    parts.push(`<div style="font-size:12px;font-weight:600;margin-top:12px;">政策来源（${p.sources.length}）</div>`);
+    p.sources.forEach(s => {
+      const head = s.title + (s.ref ? `（${s.ref}）` : '');
+      const meta = [s.publisher, s.date].filter(Boolean).join(' · ');
+      const safeUrl = /^https?:\/\//i.test(s.url || '') ? s.url : '';
+      parts.push(`<div class="pol-prov-source">
+        <div style="font-weight:600;">${pmEscHtml(head)}</div>
+        ${meta ? `<div style="color:var(--t-text-2);margin-top:2px;">${pmEscHtml(meta)}</div>` : ''}
+        ${s.confirms ? `<div style="margin-top:2px;">${pmEscHtml(s.confirms)}</div>` : ''}
+        ${safeUrl ? `<div style="margin-top:2px;"><a href="${pmEscHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--t-primary);word-break:break-all;">查看原文</a></div>` : ''}
+      </div>`);
+    });
+  } else {
+    parts.push(`<div style="font-size:12px;color:var(--t-text-2);margin-top:12px;">暂无来源记录。</div>`);
+  }
+  parts.push(`<div style="font-size:11px;color:var(--t-text-2);margin-top:12px;border-top:1px solid var(--t-border);padding-top:8px;">政策数据仅供参考，以当地社保部门公布的官方文件为准。</div>`);
+  const ov = document.createElement('div');
+  ov.className = 'pol-prov-overlay';
+  ov.innerHTML = `<div class="pol-prov-modal" role="dialog" aria-label="政策来源与核查">${parts.join('')}</div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  const closeBtn = ov.querySelector('[data-close]');
+  if (closeBtn) closeBtn.addEventListener('click', () => ov.remove());
+  document.body.appendChild(ov);
+}
+
 /** 渲染参数卡中的险种政策明细表（只读；预览月份默认当前月，可切换） */
 function renderSalaryItemsTable() {
   const el = document.getElementById('sp-items-table');
   if (!el) return;
   const missingEl = document.getElementById('sp-data-missing');
   if (missingEl) missingEl.style.display = isPolicyDataFileMissing() ? '' : 'none';
-  const now = new Date();
-  const nowYM = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
-  const prevInput = document.getElementById('sp-preview-month');
-  if (prevInput && !prevInput.value) prevInput.value = nowYM;
-  const previewYM = (prevInput && /^\d{4}-\d{2}$/.test(prevInput.value)) ? prevInput.value : nowYM;
+  const previewYM = getPreviewYM();
   const pol = resolvePolicy(salaryParams.cityId, previewYM);
   const det = computeSocialInsuranceDetail(salaryParams.socialBase, salaryParams.fundBase, pol.items, salaryParams.fundRate);
   const fmtBound = (v) => (v == null ? '不限' : formatNum(v));
@@ -217,7 +277,7 @@ function renderSalaryItemsTable() {
   el.innerHTML = `
     <thead>
       <tr>
-        <th colspan="7" style="text-align:left;color:var(--t-text-2);font-weight:500;">适用政策（按预览月份 ${previewYM} 匹配）：${pol.label}${pol.matched ? '' : '（未精确匹配月份，已用最新年度）'}${pol.items && CITY_POLICY_LIBRARY[pol.cityKey].years[pol.yearKey].pending ? ' · 参考值待核对' : ''}</th>
+        <th colspan="7" style="text-align:left;color:var(--t-text-2);font-weight:500;">适用政策（按预览月份 ${previewYM} 匹配）：${pol.label}${pol.matched ? '' : '（未精确匹配月份，已用最新年度）'}<span style="float:right;">${provenanceBadgeHtml(pol.cityKey, pol.yearKey, pol.provenance)}</span></th>
       </tr>
       <tr><th>险种</th><th>个人比例</th><th>单位比例</th><th>基数下限</th><th>基数上限</th><th>个人实缴</th><th>单位实缴</th></tr>
     </thead>
@@ -282,5 +342,5 @@ function readSalaryParams() {
 }
 
 
-  window.PageParams = { buildCityOptions,initCard,onCityParamChange,onExtraDetailToggle,onExtraItemInput,onExtraItemToggle,readSalaryParams,refreshBatchCitySelect,renderExtraDetailPanel,renderParamsSummary,renderSalaryItemsTable,toggleCard,updateExtraDetailHint };
+  window.PageParams = { buildCityOptions,initCard,onCityParamChange,onExtraDetailToggle,onExtraItemInput,onExtraItemToggle,provenanceBadgeHtml,readSalaryParams,refreshBatchCitySelect,renderExtraDetailPanel,renderParamsSummary,renderSalaryItemsTable,showProvenanceModal,toggleCard,updateExtraDetailHint };
 })();

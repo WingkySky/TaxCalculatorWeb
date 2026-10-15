@@ -251,6 +251,7 @@ try {
           <div class="row-flex" style="margin-bottom:14px;">
             <div class="sp-field" style="width:180px;"><label>城市</label><select id="pm-city" onchange="PagePolicy.onPmCityChange()"></select></div>
             <div class="sp-field" style="width:220px;"><label>年度</label><select id="pm-year" onchange="PagePolicy.onPmYearChange()"></select></div>
+            <div class="sp-field" style="width:110px;"><label>核查状态</label><span id="pm-status-badge">—</span></div>
             <button class="btn btn-secondary btn-sm" onclick="PagePolicy.pmAddCity()">新增城市</button>
             <button class="btn btn-secondary btn-sm" onclick="PagePolicy.pmAddYear()">新增年度</button>
             <button class="btn btn-secondary btn-sm" onclick="PagePolicy.pmDeleteYear()">删除当前年度</button>
@@ -262,6 +263,7 @@ try {
             <div class="sp-field" style="flex:1;min-width:200px;"><label>年度说明</label><input class="pm-item-input" style="text-align:left;" id="pm-label" onchange="PagePolicy.onPmLabelChange()"></div>
           </div>
           <div id="pm-items-wrap"></div>
+          <div id="pm-prov-wrap"></div>
           <div class="btn-row">
             <button class="btn btn-primary" style="flex:1;" onclick="PagePolicy.pmExportExcel()">导出 Excel</button>
             <label class="btn btn-secondary" style="flex:1;cursor:pointer;">

@@ -11,10 +11,10 @@
  *   公积金额外 rates 可选比例档。pending: true 表示数值待核对。
  *
  * 数据说明与更新流程见 README「政策数据维护」；所有数值均为参考值，
- * 请以当地社保部门公布为准。版本：2026.09
+ * 请以当地社保部门公布为准。版本：2026.10
  * ============================================================ */
 
-window.CITY_POLICY_LIBRARY_VERSION = '2026.09';
+window.CITY_POLICY_LIBRARY_VERSION = '2026.10';
 window.CITY_POLICY_LIBRARY_DATA = {
     "beijing": {
       "name": "北京",
@@ -25,7 +25,7 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2025-07",
             "2026-06"
           ],
-          "pending": true,
+          "status": "unverified",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -73,7 +73,8 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2026-07",
             "2027-06"
           ],
-          "pending": false,
+          "status": "partial",
+          "checkedAt": "2026-09",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -126,7 +127,8 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2025-07",
             "2026-06"
           ],
-          "pending": false,
+          "status": "partial",
+          "checkedAt": "2026-09",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -173,7 +175,8 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2026-07",
             "2027-06"
           ],
-          "pending": false,
+          "status": "partial",
+          "checkedAt": "2026-09",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -225,7 +228,7 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2023-07",
             "2024-06"
           ],
-          "pending": true,
+          "status": "unverified",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -271,7 +274,7 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2024-07",
             "2025-06"
           ],
-          "pending": true,
+          "status": "unverified",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -317,7 +320,7 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2025-07",
             "2026-06"
           ],
-          "pending": true,
+          "status": "unverified",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -363,7 +366,19 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2026-07",
             "2027-06"
           ],
-          "pending": true,
+          "status": "unverified",
+          "sources": [
+            {
+              "title": "广东省最低工资标准调整（2026-09-01 起：广州 2680、深圳 2700）",
+              "ref": "粤府函〔2026〕188号",
+              "publisher": "广东省人民政府",
+              "covers": [
+                "unemployment",
+                "fund"
+              ],
+              "confirms": "失业保险与公积金下限随最低工资调整：广州 2680 自 2026-09-01 起（原年度说明记载）"
+            }
+          ],
           "items": {
             "pension": {
               "personal": 0.08,
@@ -414,7 +429,7 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2025-07",
             "2026-06"
           ],
-          "pending": true,
+          "status": "unverified",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -460,7 +475,19 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2026-07",
             "2027-06"
           ],
-          "pending": true,
+          "status": "unverified",
+          "sources": [
+            {
+              "title": "广东省最低工资标准调整（2026-09-01 起：广州 2680、深圳 2700）",
+              "ref": "粤府函〔2026〕188号",
+              "publisher": "广东省人民政府",
+              "covers": [
+                "unemployment",
+                "fund"
+              ],
+              "confirms": "失业保险与公积金下限随最低工资调整：深圳 2700 自 2026-09-01 起（原年度说明记载）"
+            }
+          ],
           "items": {
             "pension": {
               "personal": 0.08,
@@ -511,7 +538,7 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2025-01",
             "2025-12"
           ],
-          "pending": true,
+          "status": "unverified",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -557,7 +584,19 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2026-01",
             "2026-12"
           ],
-          "pending": true,
+          "status": "unverified",
+          "sources": [
+            {
+              "title": "2026 年度缴费基数下限 4986 执行依据（原年度说明记载）",
+              "ref": "浙人社发〔2025〕52号",
+              "covers": [
+                "pension",
+                "medical",
+                "unemployment"
+              ],
+              "confirms": "2026 年度基数下限 4986；上限 24930 沿用、待核对"
+            }
+          ],
           "items": {
             "pension": {
               "personal": 0.08,
@@ -608,7 +647,7 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2025-01",
             "2025-12"
           ],
-          "pending": true,
+          "status": "unverified",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -654,7 +693,7 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2026-01",
             "2026-12"
           ],
-          "pending": true,
+          "status": "unverified",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -705,7 +744,7 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2025-01",
             "2025-12"
           ],
-          "pending": true,
+          "status": "unverified",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -751,7 +790,7 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2026-01",
             "2026-12"
           ],
-          "pending": true,
+          "status": "unverified",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -802,7 +841,7 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2025-01",
             "2025-12"
           ],
-          "pending": true,
+          "status": "unverified",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -848,7 +887,7 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2026-01",
             "2026-12"
           ],
-          "pending": true,
+          "status": "unverified",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -899,7 +938,8 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2025-01",
             "2025-12"
           ],
-          "pending": false,
+          "status": "partial",
+          "checkedAt": "2026-09",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -945,7 +985,7 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2026-01",
             "2026-12"
           ],
-          "pending": true,
+          "status": "unverified",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -996,7 +1036,7 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2025-01",
             "2025-12"
           ],
-          "pending": true,
+          "status": "unverified",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -1042,7 +1082,7 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2026-01",
             "2026-12"
           ],
-          "pending": true,
+          "status": "unverified",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -1093,7 +1133,7 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2025-01",
             "2025-12"
           ],
-          "pending": true,
+          "status": "unverified",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -1139,7 +1179,7 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2026-01",
             "2026-12"
           ],
-          "pending": true,
+          "status": "unverified",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -1190,7 +1230,7 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2025-01",
             "2025-12"
           ],
-          "pending": true,
+          "status": "unverified",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -1236,7 +1276,7 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2026-01",
             "2026-12"
           ],
-          "pending": true,
+          "status": "unverified",
           "items": {
             "pension": {
               "personal": 0.08,
@@ -1287,7 +1327,7 @@ window.CITY_POLICY_LIBRARY_DATA = {
             "2000-01",
             "2999-12"
           ],
-          "pending": true,
+          "status": "unverified",
           "items": {
             "pension": {
               "personal": 0.08,

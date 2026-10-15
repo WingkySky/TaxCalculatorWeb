@@ -1,7 +1,7 @@
 # 政策库溯源与状态分级设计（政策库能力升级·子项目①）
 
 - 日期：2026-10-15
-- 状态：设计评审中（方案A与schema、第1/2节已获用户确认；第3/4节随规格审阅一并确认）
+- 状态：已实施（方案A与schema、第1/2节用户确认；第3/4节按已确认决策推导，用户「开干吧」放行实施）
 - 前置：`docs/superpowers/specs/2026-09-04-city-policy-library-design.md`（城市政策库首版）
 - 参考项目：https://github.com/weante/city-salary（MIT，逐城溯源+核查日历+CI门禁体系）
 - 关联文件：`tax-policy-data.json`、`js/policy-library.js`、`js/page-policy.js`、`js/page-params.js`、`js/self-tests.js`、`tools/build-policy-seed.js`、`index.html`、`README.md`
@@ -70,7 +70,7 @@
 规则：
 
 1. **缺省即 unverified**：加载时无 `status` 的年度记录（含旧存档）按 `unverified` 处理。
-2. **险种级依据是派生的，不存储**：任一 source 的 `covers` 含某险种 → 该险种「有据」，否则「无据」。派生结果**不覆盖人工声明的 status**（贴链接≠数值已核实）。
+2. **险种级依据是派生的，不存储**：任一 source 的 `covers` 含某险种 → 该险种「有据」，否则「无据」。派生结果**不覆盖人工声明的 status**（贴链接≠数值已核实）。`covers` 缺省=全项；实现补充：显式空数组=明确不证实任何险种（编辑器取消全部勾选的表达，`[]` 与缺省语义不同）。
 3. **加载宽容校验**（与现有 mergeLibrary 宽容风格一致）：缺 `title` 的 source 条目丢弃；`covers` 非法键忽略；`status`/`checkedAt` 格式非法回落缺省。坏数据降级显示，绝不崩计算。
 4. **`pending` 停止写出**，读取时一次性映射：`pending:true → unverified`、`pending:false → partial`（当初手工核对过、README 有文号，但未存完整来源记录，不能自称 confirmed）。
 5. **诚实迁移**：存量 13 城 27 条按规则 4 补 `status`；README 中现成文号（如粤府函〔2026〕188号）填入对应 `sources`，只搬运已有信息，不新做核查（核查是子项目③④的事）。

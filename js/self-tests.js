@@ -101,9 +101,22 @@ function runSelfTests() {
     return f.lower === 2360 && f.upper === 44265;
   })());
 
-  // —— Excel/JSON 扁平转换 roundtrip ——
+  // —— Excel/JSON 扁平转换 roundtrip（Excel 只走数值：溯源字段按设计不进 Excel，导入一律 unverified）——
+  const stripProv = lib => {
+    const c = JSON.parse(JSON.stringify(lib));
+    Object.values(c).forEach(city => Object.values(city.years).forEach(rec => {
+      delete rec.status; delete rec.checkedAt; delete rec.note; delete rec.sources; delete rec.pending;
+    }));
+    return c;
+  };
   const rtLib = rowsToLibrary(libraryToRows(CITY_POLICY_LIBRARY)).library;
-  isTrue('政策库 Excel 扁平转换 roundtrip', JSON.stringify(rtLib) === JSON.stringify(CITY_POLICY_LIBRARY));
+  isTrue('政策库 Excel 扁平转换 roundtrip（数值字段）', JSON.stringify(stripProv(rtLib)) === JSON.stringify(stripProv(CITY_POLICY_LIBRARY)));
+  isTrue('Excel 导入一律诚实标 unverified 且无来源', Object.values(rtLib).every(city =>
+    Object.values(city.years).every(rec => rec.status === 'unverified' && Array.isArray(rec.sources) && rec.sources.length === 0)));
+  isTrue('Excel 导出含核查状态/最近核查两列', (() => {
+    const rows = libraryToRows(CITY_POLICY_LIBRARY);
+    return rows[0][12] === '核查状态' && rows[0][13] === '最近核查' && rows[1][12] === '待核实';
+  })());
 
   // —— 广州 vs 深圳同薪差异（分城市政策生效）——
   const sz = resolvePolicy('shenzhen', '2025-06');
@@ -1049,7 +1062,7 @@ function runPolicySyncTests() {
   const isTrue = (name, cond) => eq(name, cond ? 1 : 0, 1);
   const nodeEnv = typeof localStorage === 'undefined';
 
-  const { compareVersions, mergeLibrary, officialDiffFor } = PolicyLib;
+  const { compareVersions, mergeLibrary, officialDiffFor, normalizePolicyLibrary, itemCoveredBySources } = PolicyLib;
   const rec = (personal, lower, upper, employer) => {
     const pension = { personal: personal, lower: lower, upper: upper };
     if (employer != null) pension.employer = employer;
@@ -1103,6 +1116,91 @@ function runPolicySyncTests() {
   isTrue('合并·用户改过说明保留', mergeLibrary(base, userL, remoteL).beijing.years['2025'].label === '用户备注');
   isTrue('合并·用户没改说明采纳官方', mergeLibrary(base, JSON.parse(JSON.stringify(base)), remoteL).beijing.years['2025'].label === '官方新说明');
 
+  // —— 溯源字段：规范化宽容校验与旧 pending 映射 ——
+  const provLib = {
+    t1: { name: '测试', years: {
+      y1: { label: 'L', effective: ['2025-01', '2025-12'], pending: false,
+        checkedAt: 'bad-date', note: '  备注内容  ',
+        sources: [
+          { title: ' 文件A ', ref: ' X号 ', url: ' https://a ', date: '2025-07-01', confirms: ' 上限=2×3 ', covers: ['pension', 'badkey'] },
+          { url: 'https://no-title' },
+          '垃圾条目'
+        ],
+        items: { pension: { personal: 0.08, lower: 1000, upper: 20000 } } },
+      y2: { label: 'M', effective: ['2026-01', '2026-12'], pending: true, items: { pension: { personal: 0.08, lower: 1000, upper: 20000 } } },
+      y3: { label: 'N', effective: ['2027-01', '2027-12'], status: 'confirmed', items: { pension: { personal: 0.08, lower: 1000, upper: 20000 } } }
+    } }
+  };
+  normalizePolicyLibrary(provLib);
+  const y1 = provLib.t1.years.y1, y2 = provLib.t1.years.y2, y3 = provLib.t1.years.y3;
+  isTrue('溯源·旧 pending:false 映射 partial', y1.status === 'partial');
+  isTrue('溯源·旧 pending:true 映射 unverified', y2.status === 'unverified');
+  isTrue('溯源·合法 status 保留', y3.status === 'confirmed');
+  isTrue('溯源·非法 checkedAt 丢弃', y1.checkedAt === undefined);
+  isTrue('溯源·note trim 保留', y1.note === '备注内容');
+  isTrue('溯源·来源字段 trim、坏 covers 键过滤、无标题条目丢弃',
+    y1.sources.length === 1 && y1.sources[0].title === '文件A' && y1.sources[0].ref === 'X号'
+    && y1.sources[0].url === 'https://a' && y1.sources[0].confirms === '上限=2×3'
+    && JSON.stringify(y1.sources[0].covers) === '["pension"]');
+  isTrue('溯源·normalize 幂等（字段不丢不变形）', (() => {
+    const again = JSON.parse(JSON.stringify(provLib));
+    normalizePolicyLibrary(again);
+    return JSON.stringify(again) === JSON.stringify(provLib);
+  })());
+  isTrue('溯源·covers 空数组=明确无据、缺省=全项', (() => {
+    const l2 = { t: { name: 'T', years: { y: { label: 'L', effective: ['2025-01', '2025-12'], status: 'partial',
+      sources: [{ title: 'A', covers: [] }, { title: 'B' }],
+      items: { pension: { personal: 0.08, lower: null, upper: null } } } } } };
+    normalizePolicyLibrary(l2);
+    const srcs = l2.t.years.y.sources;
+    return Array.isArray(srcs[0].covers) && srcs[0].covers.length === 0
+      && !('covers' in srcs[1])
+      && itemCoveredBySources('pension', srcs) === true       // B 缺省全项
+      && itemCoveredBySources('pension', [srcs[0]]) === false; // A 显式无据
+  })());
+
+  // —— sources 三方合并：远端新增收、本地新增留、同键官方优先 ——
+  const sBase = { beijing: city('北京') };
+  sBase.beijing.years['2025'].sources = [{ title: '共同文件', ref: '共1号' }];
+  const sUser = JSON.parse(JSON.stringify(sBase));
+  sUser.beijing.years['2025'].sources.push({ title: '用户补充', url: 'https://u' });
+  const sRemote = JSON.parse(JSON.stringify(sBase));
+  sRemote.beijing.years['2025'].sources.push({ title: '官方新增', ref: '官2号' });
+  sRemote.beijing.years['2025'].sources[0].confirms = '官方补充说明';
+  const sm = mergeLibrary(sBase, sUser, sRemote);
+  isTrue('合并·远端新增来源补入', sm.beijing.years['2025'].sources.some(s => s.ref === '官2号'));
+  isTrue('合并·本地新增来源保留', sm.beijing.years['2025'].sources.some(s => s.url === 'https://u'));
+  isTrue('合并·同键官方改动优先', sm.beijing.years['2025'].sources.find(s => s.ref === '共1号').confirms === '官方补充说明');
+  const sUser2 = JSON.parse(JSON.stringify(sBase));
+  sUser2.beijing.years['2025'].sources[0].confirms = '本地核对补充';
+  isTrue('合并·官方未动保留本地来源版本', mergeLibrary(sBase, sUser2, JSON.parse(JSON.stringify(sBase))).beijing.years['2025'].sources[0].confirms === '本地核对补充');
+  const sUser3 = JSON.parse(JSON.stringify(sBase));
+  sUser3.beijing.years['2025'].sources[0].confirms = '本地版本';
+  const sRemote3 = JSON.parse(JSON.stringify(sBase));
+  sRemote3.beijing.years['2025'].sources[0].confirms = '官方版本';
+  isTrue('合并·双方同改官方赢', mergeLibrary(sBase, sUser3, sRemote3).beijing.years['2025'].sources[0].confirms === '官方版本');
+  const stRemote = JSON.parse(JSON.stringify(sBase));
+  stRemote.beijing.years['2025'].status = 'confirmed';
+  isTrue('合并·用户没改状态采纳官方', mergeLibrary(sBase, JSON.parse(JSON.stringify(sBase)), stRemote).beijing.years['2025'].status === 'confirmed');
+
+  // —— resolvePolicy 溯源透传 + 前台徽标纯函数 ——
+  salaryParams.policyYear = 'auto';
+  isTrue('溯源·resolvePolicy 透传状态（北京2026=partial）', resolvePolicy('beijing', '2026-08').provenance.status === 'partial');
+  isTrue('溯源·透传 sources 为浅拷贝（污染不回写库）', (() => {
+    const p1 = resolvePolicy('beijing', '2026-08').provenance;
+    const n0 = p1.sources.length;
+    p1.sources.push({ title: '污染' });
+    return resolvePolicy('beijing', '2026-08').provenance.sources.length === n0;
+  })());
+  isTrue('溯源·custom 城市徽标不渲染', PageParams.provenanceBadgeHtml('custom', '2026', resolvePolicy('custom', '2026-08').provenance) === '');
+  isTrue('溯源·徽标三档文案与 prov 缺失不渲染', (() => {
+    const b1 = PageParams.provenanceBadgeHtml('beijing', '2026', { status: 'confirmed' });
+    const b2 = PageParams.provenanceBadgeHtml('beijing', '2026', { status: 'partial' });
+    const b3 = PageParams.provenanceBadgeHtml('beijing', '2026', { status: 'unverified' });
+    return b1.indexOf('2026年度 · 已核实 ✓') >= 0 && b2.indexOf('部分核实') >= 0 && b3.indexOf('待核实') >= 0
+      && PageParams.provenanceBadgeHtml('beijing', '2026', null) === '';
+  })());
+
   // —— 本地改动标记（真实库：内存改后即还原，不写存档） ——
   const bj = CITY_POLICY_LIBRARY.beijing;
   const yk0 = Object.keys(bj.years)[0];
@@ -1119,8 +1217,8 @@ function runPolicySyncTests() {
     const libSnap = JSON.parse(JSON.stringify(CITY_POLICY_LIBRARY));
     const c = JSON.parse(JSON.stringify(libSnap.beijing));
     c.years[yk0].items.pension.personal = 0.99;  // 官方新比例（yk0 年度）
-    const info = PolicyLib.applyRemoteOfficial({ version: '2026.10', cities: { beijing: c } });
-    isTrue('远端·返回版本推进信息', !!info && info.from === '2026.09' && info.to === '2026.10');
+    const info = PolicyLib.applyRemoteOfficial({ version: '2026.11', cities: { beijing: c } });
+    isTrue('远端·返回版本推进信息', !!info && info.from === '2026.10' && info.to === '2026.11');
     isTrue('远端·官方新值生效', PolicyLib.resolvePolicy('beijing', '2025-08').items.pension.personal === 0.99);
     isTrue('远端·其余城市保留', !!CITY_POLICY_LIBRARY.guangzhou);
     isTrue('远端·用户原有数值不丢', PolicyLib.resolvePolicy('beijing', '2025-08').items.pension.lower === libSnap.beijing.years[yk0].items.pension.lower);
