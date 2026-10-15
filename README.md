@@ -83,7 +83,7 @@
 
 ## 政策数据维护
 
-政策数据（城市社保公积金基数与比例）的唯一维护入口是仓库根目录的 **`tax-policy-data.json`**：
+政策数据（城市社保公积金基数与比例）的唯一维护入口是仓库根目录的 **`tax-policy-data.json`**。联网取数用 `node tools/policy-research.js`（搜索/抓页/候选抽取，[weante/city-salary](https://github.com/weante/city-salary) MIT 改编）；**任何数值改动必须先过四关复核**（口径/生效/数字互洽/来源）并把文号与 URL 写进 `sources[]`——完整流程、算式自校验速查与抓取经验见 **[docs/policy-verification-playbook.md](docs/policy-verification-playbook.md)**（核查手册）。
 
 1. 编辑 JSON（根结构：`version` 版本号 `YYYY.MM` + `cities` 城市表）。年度记录可带**溯源字段**：`status`（`confirmed` 全部险种有官方依据 / `partial` 部分有据 / `unverified` 无从核对；缺省 unverified）、`checkedAt` 最近人工核查年月（YYYY-MM）、`note` 口径备注、`sources[]` 来源记录（每条 `title` 必填，`ref` 文号 / `url` / `publisher` / `date` / `confirms` 确认了什么 可选，`covers` 声明证实哪些险种、缺省全项）；旧 `pending` 字段不再写出（读取时 true→unverified、false→partial）；
 2. 运行 `node tools/build-policy-seed.js` 重新生成 file:// 兜底种子 `tax-policy-data.js`（`--check` 仅校验两者一致）；
