@@ -24,6 +24,13 @@
 
 每次核查后：更新对应记录的 `checkedAt` 与 `status`，`version` 升一个级（建议 `YYYY.MM`），重生成种子、跑回归门、提交推送。
 
+**运营节奏（机制自我执行，不靠记性）**：
+
+- **每次提交**：GitHub Actions（`.github/workflows/ci.yml`）在 Node 18/20/22 三版本矩阵自动跑三道守卫——种子一致性（`build-policy-seed.js --check`）→ **政策时效门禁**（`node tools/policy-expiry.js`：每城现行期覆盖、限期费率到期、confirmed 必须有全险种来源支撑、旧 pending 残留，四道门）→ 回归门（`node tests/run.js` 八套件）。
+- **每月**：本地跑一遍 `node tools/policy-expiry.js`，看 60 天内到期提醒，提前安排核查，别等到期。
+- **每季**：看门禁输出的 status 分布——**unverified 数应单调下降**，上升要能解释。
+- **随时（限期费率）**：文件到期次日触发专项核查。已到期但暂无法核实的，在 `tools/policy-expiry.js` 的 `ACKNOWLEDGED` 登记处置（`{ date, reason }`）才不红——**逼你做一个有记录的判断，而不是默默沿用**；核实后更新数据并清除登记。
+
 ## 二、四关复核（改值的门槛）
 
 任一关不过，**不改值、不升 status**，能记 warn 就记（我们的等价物：保持 `unverified`/`partial` + note 写明卡在哪一关）：

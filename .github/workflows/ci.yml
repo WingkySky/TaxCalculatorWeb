@@ -1,0 +1,30 @@
+name: CI
+
+# 首次 CI（2026-10-16，政策库能力升级子项目③）：回归门此前只在本地跑，
+# 现在推送/PR 即在 Node 18/20/22 三版本矩阵上执行三道守卫。
+# 注意：刻意不跑 tools/policy-research.js——联网取数工具只在维护者侧手动使用，
+# 进 CI 会打搜索接口（限流纪律）且依赖本机 Edge 路径。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: 种子与 JSON 一致性
+        run: node tools/build-policy-seed.js --check
+      - name: 政策时效门禁（现行期覆盖/限期费率到期/诚实性/迁移卫生）
+        run: node tools/policy-expiry.js
+      - name: 回归门（八套件自检）
+        run: node tests/run.js
