@@ -10,14 +10,13 @@
   const { CITY_POLICY_LIBRARY, FUND_RATES_STD, SI_ITEMS, SI_ITEM_LABELS, _policyCache,
     fundItem, libraryToRows, normalizePolicyLibrary, officialDiffFor, restoreOfficialAll, restoreOfficialValue, rowsToLibrary, savePolicyLibrary, siItem } = PolicyLib;
   const { ensureXLSX, saveWorkbook } = Exporter;
-  const { buildCityOptions, onCityParamChange, renderSalaryItemsTable } = PageParams;
+  const { onCityParamChange, renderSalaryItemsTable } = PageParams;
 
 // ==================== 政策数据管理弹层 ====================
 
 /** 城市集合变化后同步各处下拉：重建参数卡城市选项，再触发年度/公积金/批量兜底盒联动刷新 */
 function syncCitySelects() {
-  const spCitySel = document.getElementById('sp-city');
-  if (spCitySel) spCitySel.innerHTML = buildCityOptions(salaryParams.cityId);
+  PageParams.syncSpPicker();
   onCityParamChange();
 }
 
@@ -70,19 +69,15 @@ function closePolicyModal() {
   if (window.App) App.navigate('params');
 }
 
-function pmCityOptionsHTML() {
-  return PageParams.buildCityOptions(window._pmCity);
-}
-
-function onPmCityChange() {
-  const sel = document.getElementById('pm-city');
-  // 每次按政策库重建城市选项（首次打开/新增城市/导入后保持同步）；
-  // 用户切换时优先采用下拉当前值，失效时回退到上次城市或自定义。
-  const wanted = sel.value || window._pmCity;
-  sel.innerHTML = pmCityOptionsHTML();
-  window._pmCity = CITY_POLICY_LIBRARY[wanted] ? wanted
-    : (CITY_POLICY_LIBRARY[window._pmCity] ? window._pmCity : 'custom');
-  sel.value = window._pmCity;
+function onPmCityChange(cityId) {
+  // cityId 来自 CityPicker 回调或调用方显式传参；无参时沿用当前城市。
+  // picker 的 refresh+setValue 在此统一做——城市表变化的所有入口（新增/导入/恢复官方/远端合并）都汇经本函数。
+  if (cityId != null && CITY_POLICY_LIBRARY[cityId]) window._pmCity = cityId;
+  if (!CITY_POLICY_LIBRARY[window._pmCity]) window._pmCity = 'custom';
+  if (pmPicker) {
+    pmPicker.refresh();
+    pmPicker.setValue(window._pmCity);
+  }
   const city = CITY_POLICY_LIBRARY[window._pmCity];
   const yearKeys = Object.keys(city.years);
   if (!yearKeys.includes(window._pmYear)) window._pmYear = yearKeys[0];
@@ -568,5 +563,13 @@ function pmImportJSON(input) {
 }
 
 
-  window.PagePolicy = { applyImportedLibrary,closePolicyModal,onPmCheckedAtChange,onPmCityChange,onPmEffectiveChange,onPmFundRatesInput,onPmItemInput,onPmLabelChange,onPmNoteChange,onPmRestoreField,onPmSourceAdd,onPmSourceCoversToggle,onPmSourceDelete,onPmSourceFieldChange,onPmStatusChange,onPmYearChange,openPolicyModal,pmAddCity,pmAddYear,pmCityOptionsHTML,pmDeleteYear,pmExportExcel,pmExportJSON,pmImportExcel,pmImportJSON,pmResetToSeed,renderPolicyEditor,updatePmStorageStatus };
+  /* ---- CityPicker 挂载（政策库页城市选择，337 城搜索+省市筛选） ----
+   * Node 门无真 DOM，mount 抛错时置 null（onPmCityChange 已防御） */
+  const pmMount = document.getElementById('pm-city');
+  const pmPicker = (() => {
+    try { return pmMount ? CityPicker.mount(pmMount, { value: window._pmCity || 'custom', onChange: v => onPmCityChange(v) }) : null; }
+    catch (e) { return null; }
+  })();
+
+  window.PagePolicy = { applyImportedLibrary,closePolicyModal,getPmPicker:()=>pmPicker,onPmCheckedAtChange,onPmCityChange,onPmEffectiveChange,onPmFundRatesInput,onPmItemInput,onPmLabelChange,onPmNoteChange,onPmRestoreField,onPmSourceAdd,onPmSourceCoversToggle,onPmSourceDelete,onPmSourceFieldChange,onPmStatusChange,onPmYearChange,openPolicyModal,pmAddCity,pmAddYear,pmDeleteYear,pmExportExcel,pmExportJSON,pmImportExcel,pmImportJSON,pmResetToSeed,renderPolicyEditor,updatePmStorageStatus };
 })();

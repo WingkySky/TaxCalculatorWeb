@@ -110,7 +110,8 @@ function updateExtraDetailHint() {
 
 
 /** 城市下拉选项 HTML（含自定义；skipCustom 用于批量行内城市场景）。
- *  337 城起按 region 分 optgroup（省份分组），无 region 的城市（自定义/用户新增）平铺在前。 */
+ *  337 城起按 region 分 optgroup（省份分组），无 region 的城市（自定义/用户新增）平铺在前。
+ *  ⚠️ CityPicker 接管后本函数仅作回归断言锚点与兜底，页面 UI 一律走 CityPicker。 */
 function buildCityOptions(selectedValue, skipCustom) {
   const plain = [];
   const groups = {};
@@ -125,9 +126,11 @@ function buildCityOptions(selectedValue, skipCustom) {
     .map(([region, opts]) => `<optgroup label="${region}">${opts.join('')}</optgroup>`).join('');
 }
 
-/** 城市切换：重建年度/公积金比例选项后再读取参数 */
-function onCityParamChange() {
-  const cityId = document.getElementById('sp-city')?.value || 'custom';  const city = CITY_POLICY_LIBRARY[cityId] || CITY_POLICY_LIBRARY.custom;
+/** 城市切换：重建年度/公积金比例选项后再读取参数（cityId 来自 CityPicker 回调/调用方） */
+function onCityParamChange(cityId) {
+  const wanted = cityId != null ? cityId : getSpCityValue();
+  salaryParams.cityId = CITY_POLICY_LIBRARY[wanted] ? wanted : 'custom';
+  const city = CITY_POLICY_LIBRARY[salaryParams.cityId];
   const yearSel = document.getElementById('sp-year');
   if (yearSel) {
     yearSel.innerHTML = `<option value="auto" ${salaryParams.policyYear === 'auto' ? 'selected' : ''}>自动匹配</option>` +
@@ -138,7 +141,7 @@ function onCityParamChange() {
   const frCustomWrap = document.getElementById('sp-fund-rate-custom-wrap');
   const rates = (city.years[Object.keys(city.years)[0]]?.items?.fund?.rates) || FUND_RATES_STD;
   if (frSel && frCustomWrap) {
-    if (cityId === 'custom') {
+    if (salaryParams.cityId === 'custom') {
       frSel.style.display = 'none';
       frCustomWrap.style.display = '';
     } else {
@@ -199,12 +202,25 @@ function initCard() {
   applyCardCollapsed(collapsed);
 }
 
-/** 批量页「整批参保城市」下拉重建（保留当前选择）；政策库增删城市后经 onCityParamChange 联动 */
+/** 批量页「整批参保城市」选择器刷新（保留当前选择）；政策库增删城市后经 onCityParamChange 联动 */
 function refreshBatchCitySelect() {
-  const sel = document.getElementById('batch-city');
-  if (!sel) return;
-  sel.innerHTML = `<option value="">跟随「工资参数」中的城市</option>` + buildCityOptions('', true);
-  sel.value = batchCityId || '';
+  if (batchPicker) {
+    batchPicker.refresh();
+    batchPicker.setValue(batchCityId || '');
+  }
+}
+
+/** 工资参数卡 picker 同步（外部模块在城市表变化后调用，替代旧 innerHTML 重建） */
+function syncSpPicker() {
+  if (spPicker) {
+    spPicker.refresh();
+    spPicker.setValue(salaryParams.cityId);
+  }
+}
+
+/** sp-picker 当前值；picker 未挂载时回退全局参数（模块加载早期/Node 桩环境） */
+function getSpCityValue() {
+  return (spPicker && spPicker.getValue()) || salaryParams.cityId || 'custom';
 }
 
 /** 预览月份：参数卡的月份输入值，缺省当前月 */
@@ -327,8 +343,8 @@ function readSalaryParams() {
     el.classList.remove('input-error');
     return v;
   };
-  const citySel = document.getElementById('sp-city');
-  if (citySel && CITY_POLICY_LIBRARY[citySel.value]) salaryParams.cityId = citySel.value;
+  const spVal = getSpCityValue();
+  if (CITY_POLICY_LIBRARY[spVal]) salaryParams.cityId = spVal;
   const yearSel = document.getElementById('sp-year');
   if (yearSel) salaryParams.policyYear = yearSel.value || 'auto';
   const frSel = document.getElementById('sp-fund-rate');
@@ -350,5 +366,23 @@ function readSalaryParams() {
 }
 
 
-  window.PageParams = { buildCityOptions,initCard,onCityParamChange,onExtraDetailToggle,onExtraItemInput,onExtraItemToggle,provenanceBadgeHtml,readSalaryParams,refreshBatchCitySelect,renderExtraDetailPanel,renderParamsSummary,renderSalaryItemsTable,showProvenanceModal,toggleCard,updateExtraDetailHint };
+  /* ---- CityPicker 挂载（337 城搜索+省市筛选一体，specs/2026-10-16） ----
+   * Node 门无真 DOM，mount 抛错时置 null（getSpCityValue 等消费方已防御） */
+  function safeMount(el, opts) {
+    try { return el ? CityPicker.mount(el, opts) : null; } catch (e) { return null; }
+  }
+  const spPicker = safeMount(document.getElementById('sp-city'), {
+    value: salaryParams.cityId,
+    onChange: v => onCityParamChange(v),
+    placeholder: '输入城市名，如 郑州'
+  });
+  const batchPicker = safeMount(document.getElementById('batch-city'), {
+    value: batchCityId || '',
+    onChange: v => { TaxState.batchCityId = v; },
+    allowEmpty: true,
+    emptyLabel: '跟随「工资参数」中的城市',
+    placeholder: '输入城市名筛选'
+  });
+
+  window.PageParams = { buildCityOptions,getSpPicker:()=>spPicker,getBatchPicker:()=>batchPicker,initCard,onCityParamChange,onExtraDetailToggle,onExtraItemInput,onExtraItemToggle,provenanceBadgeHtml,readSalaryParams,refreshBatchCitySelect,renderExtraDetailPanel,renderParamsSummary,renderSalaryItemsTable,showProvenanceModal,syncSpPicker,toggleCard,updateExtraDetailHint };
 })();

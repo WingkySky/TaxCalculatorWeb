@@ -178,8 +178,7 @@ function applyShare() {
       salaryParams.fundRate = Number(payload.bp.fr) || 0.05;
       salaryParams.extraDeduction = Number(payload.bp.ed) || 0;
       if (payload.bp.xd && typeof payload.bp.xd === 'object') salaryParams.extraDetail = payload.bp.xd;
-      const spCitySel = document.getElementById('sp-city');
-      if (spCitySel) spCitySel.innerHTML = PageParams.buildCityOptions(salaryParams.cityId);
+      PageParams.syncSpPicker();
       PageParams.onCityParamChange();
     }
     if (payload.bn) {

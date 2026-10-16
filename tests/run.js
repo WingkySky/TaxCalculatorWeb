@@ -37,7 +37,7 @@ globalThis.addEventListener = globalThis.addEventListener || function () {};
 
 [
   'tax-policy-data.js',
-  'js/state.js', 'js/utils.js', 'js/tax-engine.js', 'js/policy-library.js',
+  'js/state.js', 'js/utils.js', 'js/tax-engine.js', 'js/policy-library.js', 'js/city-picker.js',
   'js/social-insurance.js', 'js/export-style.js', 'js/exporter.js', 'js/ui.js', 'js/page-shared.js',
   'js/annual-engine.js',
   'js/page-multi.js',

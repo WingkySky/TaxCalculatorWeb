@@ -156,6 +156,44 @@ function runSelfTests() {
     return resolvePolicy('dg', '2026-08').items.pension.upper === 27549;
   })());
 
+  // —— CityPicker 城市选择器：索引/过滤/渲染纯函数（specs/2026-10-16-city-picker-design.md） ——
+  const filterCitiesExt = (idx, q, region) => CityPicker.filterCities(idx, q, region || '');
+  const cpIndex = CityPicker.buildIndex();
+  isTrue('CityPicker·索引含 330+ 城与 20+ 省分组', cpIndex.list.length >= 330 && cpIndex.regions.length >= 20);
+  isTrue('CityPicker·状态点取最新年度记录（郑州=unverified/哈尔滨=partial）', (() => {
+    const zz = cpIndex.list.find(i => i.key === 'zzheng'), heb = cpIndex.list.find(i => i.key === 'heb');
+    return !!zz && zz.status === 'unverified' && !!heb && heb.status === 'partial';
+  })());
+  isTrue('CityPicker·拼音键子串命中（zz/zheng→郑州）', (() => {
+    return filterCitiesExt(cpIndex, 'zz').some(i => i.key === 'zzheng')
+      && filterCitiesExt(cpIndex, 'zheng').some(i => i.key === 'zzheng');
+  })());
+  isTrue('CityPicker·dg 命中东莞、汉字命中', (() => {
+    return filterCitiesExt(cpIndex, 'dg').some(i => i.name === '东莞')
+      && filterCitiesExt(cpIndex, '郑州').length === 1 && filterCitiesExt(cpIndex, '郑州')[0].key === 'zzheng';
+  })());
+  isTrue('CityPicker·省份+关键词 AND 叠加', (() => {
+    const r = filterCitiesExt(cpIndex, '州', '河南');
+    return r.length === 1 && r[0].key === 'zzheng';
+  })());
+  isTrue('CityPicker·无命中返回空数组', filterCitiesExt(cpIndex, '不存在的城', '').length === 0);
+  isTrue('CityPicker·渲染：chips/listbox/空值项置顶/状态点三态', (() => {
+    const chips = CityPicker.renderChipsHTML(cpIndex.regions, '河南');
+    const list = CityPicker.renderListHTML(
+      [{ key: '', blank: true }, { key: 'zzheng', name: '郑州', region: '河南', status: 'partial' }],
+      { id: 'cpx', value: '', activeKey: null, emptyLabel: '跟随「工资参数」中的城市' });
+    return chips.indexOf('data-region="河南"') >= 0 && chips.indexOf('>全部<') >= 0
+      && chips.indexOf('is-on') >= 0
+      && list.indexOf('role="listbox"') >= 0 && list.indexOf('is-blank') >= 0
+      && list.indexOf('cp-dot-partial') >= 0 && list.indexOf('跟随「工资参数」中的城市') >= 0;
+  })());
+  isTrue('CityPicker·触发框三态（有值/空值/状态点）', (() => {
+    const t1 = CityPicker.renderTriggerHTML({ key: 'zzheng', name: '郑州', status: 'partial' }, {});
+    const t2 = CityPicker.renderTriggerHTML(null, { blank: true, emptyLabel: '跟随「工资参数」中的城市' });
+    return t1.indexOf('cp-dot-partial') >= 0 && t1.indexOf('郑州') >= 0
+      && t2.indexOf('is-blank') >= 0 && t2.indexOf('跟随「工资参数」中的城市') >= 0;
+  })());
+
   // —— 批量「公积金比例」列：多写法解析与行内择档 ——
   eq('parseFundRate 5→0.05', parseFundRate('5'), 0.05);
   eq('parseFundRate 12→0.12', parseFundRate('12'), 0.12);

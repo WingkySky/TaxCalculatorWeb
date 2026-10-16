@@ -140,9 +140,8 @@
   /* ---------- 政策库远端更新 ---------- */
   function onPolicyRemoteApplied(e) {
     window._policyRemoteInfo = e.detail;
-    PagePolicy.onPmCityChange();   // 政策库页重渲染（存储状态 + 本地改动标记）
-    const spCitySel = document.getElementById('sp-city');
-    if (spCitySel) spCitySel.innerHTML = PageParams.buildCityOptions(salaryParams.cityId);
+    PagePolicy.onPmCityChange();   // 政策库页重渲染（含 picker 刷新 + 存储状态 + 本地改动标记）
+    PageParams.syncSpPicker();     // 工资参数卡 picker 同步新城市表
     PageParams.onCityParamChange();  // 工资参数卡政策明细与批量兜底盒刷新
     console.info(`政策库已自动更新：${e.detail.from} → ${e.detail.to}（${e.detail.modified ? '保留 ' + e.detail.modified + ' 处本地修改' : '无本地冲突'}）`);
   }
@@ -169,8 +168,7 @@
     if (Object.keys(PolicyLib.CITY_POLICY_LIBRARY).length > 1 && salaryParams.cityId === 'custom') {
       salaryParams.cityId = Object.keys(PolicyLib.CITY_POLICY_LIBRARY).find(k => k !== 'custom') || 'custom';
     }
-    const spCitySel = document.getElementById('sp-city');
-    if (spCitySel) spCitySel.innerHTML = PageParams.buildCityOptions(salaryParams.cityId);
+    PageParams.syncSpPicker();
     PageParams.onCityParamChange();
     PageParams.initCard();
     setIncomeType('labor');

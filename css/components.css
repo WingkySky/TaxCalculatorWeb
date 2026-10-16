@@ -680,3 +680,63 @@ html.theme-dark .mapping-col { background: rgba(255, 255, 255, 0.04); }
   font-size: 12px;
   background: var(--t-bg-header);
 }
+
+/* ---------- CityPicker 城市选择器（搜索+省市筛选一体） ---------- */
+.city-picker { position: relative; }
+.cp-trigger {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  min-height: 38px; padding: 6px 10px;
+  background: var(--t-bg); color: var(--t-text);
+  border: 1px solid var(--t-border); border-radius: var(--t-radius);
+  font-size: 14px; cursor: pointer; text-align: left;
+}
+.cp-trigger:hover, .city-picker.is-open .cp-trigger { border-color: var(--t-primary); }
+.cp-trigger.is-blank .cp-trigger-text { color: var(--t-text-2); }
+.cp-trigger-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-arrow { color: var(--t-text-2); font-size: 12px; }
+.cp-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.cp-dot-confirmed { background: var(--t-success); }
+.cp-dot-partial { background: var(--t-warning); }
+.cp-dot-unverified { background: var(--t-text-2); opacity: 0.55; }
+.cp-panel {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 60;
+  width: max(100%, 320px); max-width: 92vw;
+  background: var(--t-bg); color: var(--t-text);
+  border: 1px solid var(--t-border); border-radius: var(--t-radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  padding: 8px; animation: cp-fade 0.15s ease;
+}
+.cp-panel[hidden] { display: none; }
+@keyframes cp-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .cp-panel { animation: none; } }
+.cp-search {
+  width: 100%; box-sizing: border-box; padding: 7px 10px;
+  background: var(--t-bg-header); color: var(--t-text);
+  border: 1px solid var(--t-border); border-radius: 6px; font-size: 13px; outline: none;
+}
+.cp-search:focus { border-color: var(--t-primary); }
+.cp-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 2px; }
+.cp-chip {
+  padding: 3px 10px; border-radius: 999px; font-size: 12px; cursor: pointer;
+  background: var(--t-bg-header); color: var(--t-text-2);
+  border: 1px solid var(--t-border);
+}
+.cp-chip.is-on { background: var(--t-primary-bg); color: var(--t-primary); border-color: var(--t-primary-border); }
+.cp-list-wrap { max-height: 320px; overflow-y: auto; overscroll-behavior: contain; }
+.cp-list { list-style: none; margin: 0; padding: 0; }
+.cp-item {
+  display: flex; align-items: center; gap: 8px;
+  min-height: 34px; padding: 5px 10px; border-radius: 6px;
+  font-size: 13px; cursor: pointer; color: var(--t-text);
+}
+.cp-item:hover, .cp-item.is-active { background: var(--t-bg-header); }
+.cp-item.is-selected .cp-item-name { color: var(--t-primary); font-weight: 600; }
+.cp-item.is-blank { color: var(--t-text-2); border-bottom: 1px dashed var(--t-border); border-radius: 0; margin-bottom: 4px; }
+.cp-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-item-region { font-size: 11px; color: var(--t-text-2); }
+.cp-empty { padding: 14px 10px; font-size: 12px; color: var(--t-text-2); text-align: center; }
+.cp-clear { background: none; border: none; color: var(--t-primary); cursor: pointer; font-size: 12px; padding: 0 2px; }
+@media (max-width: 768px) {
+  .cp-panel { position: fixed; left: 8px; right: 8px; width: auto; max-width: none; z-index: 1000; box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.2); }
+  .cp-item { min-height: 40px; }
+}
