@@ -245,7 +245,12 @@ function mount(container, opts) {
     renderBody();
     el.search.focus();
   });
-  const onDocClick = (e) => { if (st.open && !container.contains(e.target)) close(false); };
+  const onDocClick = (e) => {
+    // 守卫：chip/列表点击会同步 innerHTML 重建，原 target 冒泡到 document 时已脱离 DOM——
+    // contains(脱离节点)=false 会被误判为「点到面板外」而关面板（实测缺陷），脱离节点一律忽略
+    if (!e.target || !e.target.isConnected) return;
+    if (st.open && !container.contains(e.target)) close(false);
+  };
   document.addEventListener('click', onDocClick);
 
   const api = {

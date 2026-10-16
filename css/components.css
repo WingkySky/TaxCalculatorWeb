@@ -662,7 +662,7 @@ html.theme-dark .mapping-col { background: rgba(255, 255, 255, 0.04); }
   padding: 16px;
 }
 .pol-prov-modal {
-  background: var(--t-bg);
+  background: var(--t-bg-container);
   color: var(--t-text);
   border: 1px solid var(--t-border);
   border-radius: 12px;
@@ -686,7 +686,7 @@ html.theme-dark .mapping-col { background: rgba(255, 255, 255, 0.04); }
 .cp-trigger {
   display: flex; align-items: center; gap: 8px; width: 100%;
   min-height: 38px; padding: 6px 10px;
-  background: var(--t-bg); color: var(--t-text);
+  background: var(--t-bg-container); color: var(--t-text);
   border: 1px solid var(--t-border); border-radius: var(--t-radius);
   font-size: 14px; cursor: pointer; text-align: left;
 }
@@ -701,7 +701,7 @@ html.theme-dark .mapping-col { background: rgba(255, 255, 255, 0.04); }
 .cp-panel {
   position: absolute; top: calc(100% + 4px); left: 0; z-index: 60;
   width: max(100%, 320px); max-width: 92vw;
-  background: var(--t-bg); color: var(--t-text);
+  background: var(--t-bg-container); color: var(--t-text);
   border: 1px solid var(--t-border); border-radius: var(--t-radius);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
   padding: 8px; animation: cp-fade 0.15s ease;
