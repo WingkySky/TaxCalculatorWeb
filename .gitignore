@@ -1,6 +1,9 @@
 # 视觉伴侣（brainstorming）本地会话产物
 .superpowers/
 
+# import-city-salary 上游数据缓存（拉取自 city-salary 仓库的数据文件）
+.cache/
+
 # ZCode 本地工作区状态
 .zcode/
 
