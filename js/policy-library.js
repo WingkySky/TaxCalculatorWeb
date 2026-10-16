@@ -164,11 +164,14 @@ function loadPolicyLibrary() {
         baseData: (payload.__baseData && typeof payload.__baseData === 'object') ? payload.__baseData : null
       };
     }
-    // v1 旧存档：除 __savedAt 外都是城市表
+    // v1 旧存档：除 __savedAt 外都是城市表。
+    // baseVersion 记 '0.0'（基线未知，早于版本化时代）——若记 null，官方层版本会回落到
+    // 种子版本，applySeedUpdateIfNewer 判「不比已知版本新」而跳过合并，
+    // 种子新导入的城市（如 337 城）永远进不了老用户浏览器。
     const data = JSON.parse(JSON.stringify(payload));
     delete data.__savedAt;
     if (!Object.keys(data).length) return null;
-    return { data: data, savedAt: payload.__savedAt || '', baseVersion: null, baseData: null };
+    return { data: data, savedAt: payload.__savedAt || '', baseVersion: '0.0', baseData: null };
   } catch (e) {
     return null;
   }
