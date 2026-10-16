@@ -82,6 +82,22 @@ function itemCoveredBySources(itemKey, sources) {
     (!Array.isArray(s.covers) || s.covers.indexOf(itemKey) >= 0));
 }
 
+/** 来源 URL 安全判定：仅 ^http(s):// 可渲染为原文链接（与 page-params 溯源浮层同规则） */
+function safeSourceUrl(url) {
+  const s = String(url == null ? '' : url).trim();
+  return /^https?:\/\//i.test(s) ? s : '';
+}
+
+/** 来源摘要行元信息：发布方 · 日期 → URL 域名（解析失败截原串）→ 空串（specs/2026-10-17） */
+function sourceMetaText(s) {
+  if (!s || typeof s !== 'object') return '';
+  const parts = [s.publisher, s.date].filter(Boolean).map(v => String(v).trim()).filter(Boolean);
+  if (parts.length) return parts.join(' · ');
+  const url = safeSourceUrl(s.url);
+  if (!url) return '';
+  try { return new URL(url).host; } catch (e) { return url.replace(/^https?:\/\//i, '').slice(0, 40); }
+}
+
 /** 来源条目身份键：ref → url → title（trim 归一化） */
 function sourceKey(s) {
   const ref = String((s && s.ref) || '').trim();
@@ -709,7 +725,7 @@ function rowsToLibrary(rows) {
   return { library: lib, errors: errors };
 }
 
-  window.PolicyLib = { CITY_POLICY_LIBRARY,FUND_RATES_STD,POLICY_LIB_STORAGE_KEY,POLICY_STATUS,SI_ITEMS,SI_ITEM_LABELS,_policyCache,applyRemoteOfficial,applySeedUpdateIfNewer,clampItemBase,clearPolicyLibraryStorage,compareVersions,findCityKey,fundItem,getOfficialVersion,initRemotePolicy,isPolicyDataFileMissing, itemCoveredBySources,libraryToRows,loadPolicyLibrary,mergeLibrary,mergeSources,modifiedFieldCount,normalizePolicyLibrary,normalizeSources,officialDiffFor,policyStorageAvailable,resolvePolicy,resolvePolicyMemo,restoreOfficialAll,restoreOfficialValue,rowsToLibrary,savePolicyLibrary,siItem,statusLabel,valueEqual };
+  window.PolicyLib = { CITY_POLICY_LIBRARY,FUND_RATES_STD,POLICY_LIB_STORAGE_KEY,POLICY_STATUS,SI_ITEMS,SI_ITEM_LABELS,_policyCache,applyRemoteOfficial,applySeedUpdateIfNewer,clampItemBase,clearPolicyLibraryStorage,compareVersions,findCityKey,fundItem,getOfficialVersion,initRemotePolicy,isPolicyDataFileMissing, itemCoveredBySources,libraryToRows,loadPolicyLibrary,mergeLibrary,mergeSources,modifiedFieldCount,normalizePolicyLibrary,normalizeSources,officialDiffFor,policyStorageAvailable,resolvePolicy,resolvePolicyMemo,restoreOfficialAll,restoreOfficialValue,rowsToLibrary,safeSourceUrl,savePolicyLibrary,siItem,sourceMetaText,statusLabel,valueEqual };
 
   function getOfficialVersion() { return OFFICIAL_VERSION; }
 })();

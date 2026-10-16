@@ -1132,7 +1132,7 @@ function runPolicySyncTests() {
   const isTrue = (name, cond) => eq(name, cond ? 1 : 0, 1);
   const nodeEnv = typeof localStorage === 'undefined';
 
-  const { compareVersions, mergeLibrary, officialDiffFor, normalizePolicyLibrary, itemCoveredBySources } = PolicyLib;
+  const { compareVersions, mergeLibrary, officialDiffFor, normalizePolicyLibrary, itemCoveredBySources, safeSourceUrl, sourceMetaText } = PolicyLib;
   const rec = (personal, lower, upper, employer) => {
     const pension = { personal: personal, lower: lower, upper: upper };
     if (employer != null) pension.employer = employer;
@@ -1228,6 +1228,19 @@ function runPolicySyncTests() {
       && itemCoveredBySources('pension', srcs) === true       // B 缺省全项
       && itemCoveredBySources('pension', [srcs[0]]) === false; // A 显式无据
   })());
+  // —— 来源摘要行纯函数：元信息回退链与 URL 安全判定（specs/2026-10-17 §②③） ——
+  isTrue('溯源·sourceMetaText 发布方·日期优先',
+    sourceMetaText({ publisher: '东莞市住房公积金管理中心', date: '2025-12-06', url: 'https://dggjj.dg.gov.cn/x.html' })
+      === '东莞市住房公积金管理中心 · 2025-12-06');
+  isTrue('溯源·sourceMetaText 无元信息回退 URL 域名',
+    sourceMetaText({ url: 'https://www.dg.gov.cn/zwgk/zfxxgkml/sylbzj/content/post_4553460.html' }) === 'www.dg.gov.cn');
+  isTrue('溯源·sourceMetaText 全空返回空串（摘要行不渲染元信息）',
+    sourceMetaText({}) === '' && sourceMetaText({ title: '只有标题' }) === '' && sourceMetaText(null) === '');
+  isTrue('溯源·safeSourceUrl 拒绝非 http(s) 协议',
+    safeSourceUrl('javascript:alert(1)') === '' && safeSourceUrl('ftp://x') === '' && safeSourceUrl('') === ''
+      && safeSourceUrl(null) === '');
+  isTrue('溯源·safeSourceUrl 放行 https 并容忍首尾空白',
+    safeSourceUrl('  https://a.b.cn/c?x=1  ') === 'https://a.b.cn/c?x=1');
 
   // —— sources 三方合并：远端新增收、本地新增留、同键官方优先 ——
   const sBase = { beijing: city('北京') };

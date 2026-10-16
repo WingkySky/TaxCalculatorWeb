@@ -1,14 +1,14 @@
 /* ============================================================
  * page-policy.js — PagePolicy 政策库页
- * 职责：政策库编辑器渲染、城市/年度增删、溯源编辑（状态/最近核查/备注/来源列表）、
- *       Excel/JSON 导入导出、存储状态展示。
+ * 职责：政策库编辑器渲染、城市/年度增删、溯源编辑（状态/最近核查/备注/
+ *       来源列表「摘要行+展开详情」，specs/2026-10-17）、Excel/JSON 导入导出、存储状态展示。
  * 对外接口：window.PagePolicy。依赖：PolicyLib/UI/Exporter/TaxUtils。
  * ============================================================ */
 (function () {
 'use strict';
   const { round2, downloadFile } = TaxUtils;
   const { CITY_POLICY_LIBRARY, FUND_RATES_STD, SI_ITEMS, SI_ITEM_LABELS, _policyCache,
-    fundItem, libraryToRows, normalizePolicyLibrary, officialDiffFor, restoreOfficialAll, restoreOfficialValue, rowsToLibrary, savePolicyLibrary, siItem } = PolicyLib;
+    fundItem, libraryToRows, normalizePolicyLibrary, officialDiffFor, restoreOfficialAll, restoreOfficialValue, rowsToLibrary, safeSourceUrl, savePolicyLibrary, siItem, sourceMetaText } = PolicyLib;
   const { ensureXLSX, saveWorkbook } = Exporter;
   const { onCityParamChange, renderSalaryItemsTable } = PageParams;
 
@@ -72,6 +72,7 @@ function closePolicyModal() {
 function onPmCityChange(cityId) {
   // cityId 来自 CityPicker 回调或调用方显式传参；无参时沿用当前城市。
   // picker 的 refresh+setValue 在此统一做——城市表变化的所有入口（新增/导入/恢复官方/远端合并）都汇经本函数。
+  pmSrcResetState(); /* 切城市重置来源列表展开/编辑态（specs/2026-10-17 §四①） */
   if (cityId != null && CITY_POLICY_LIBRARY[cityId]) window._pmCity = cityId;
   if (!CITY_POLICY_LIBRARY[window._pmCity]) window._pmCity = 'custom';
   if (pmPicker) {
@@ -90,6 +91,7 @@ function onPmCityChange(cityId) {
 function onPmYearChange() {
   const sel = document.getElementById('pm-year');
   window._pmYear = sel.value;
+  pmSrcResetState(); /* 切年度重置来源列表展开/编辑态 */
   renderPolicyEditor();
 }
 
@@ -218,7 +220,18 @@ function pmEscAttr(v) {
   return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-/** 「来源与核查」编辑区：状态下拉、最近核查、口径备注、来源列表、险种有据派生提示 */
+function pmEscText(v) {
+  return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/* 来源列表展开/编辑状态（specs/2026-10-17 §四①）：允许多条同开，编辑态同时仅一条。
+ * 以 sources 数组索引为键——凡重建数组的操作（删除/⟲恢复官方/导入）必须 pmSrcResetState() 防索引漂移 */
+let pmSrcOpenSet = new Set();
+let pmSrcEditIdx = null;
+
+function pmSrcResetState() { pmSrcOpenSet = new Set(); pmSrcEditIdx = null; }
+
+/** 「来源与核查」编辑区：状态下拉、最近核查、口径备注 + 来源列表（摘要行+展开详情+按需编辑，specs/2026-10-17） */
 function renderProvenanceEditor(rec, diff) {
   const wrap = document.getElementById('pm-prov-wrap');
   if (!wrap) return;
@@ -230,34 +243,90 @@ function renderProvenanceEditor(rec, diff) {
         onclick="PagePolicy.onPmRestoreField('${window._pmCity}','${window._pmYear}','__rec','${field}')">⟲</button>`
     : '';
   const sources = Array.isArray(rec.sources) ? rec.sources : [];
-  const srcRows = sources.map((s, i) => `
-    <div style="border:1px solid var(--t-border);border-radius:8px;padding:10px;margin-bottom:8px;background:var(--t-bg-header);">
-      <div class="row-flex" style="margin-bottom:6px;">
-        <div class="sp-field" style="flex:1;min-width:240px;"><label>标题（必填，留空不保留）</label>
-          <input class="pm-item-input" style="text-align:left;" value="${pmEscAttr(s.title)}" onchange="PagePolicy.onPmSourceFieldChange(${i},'title',this.value)"></div>
-        <div class="sp-field" style="width:190px;"><label>文号</label>
-          <input class="pm-item-input" style="text-align:left;" placeholder="如 粤府函〔2026〕188号" value="${pmEscAttr(s.ref)}" onchange="PagePolicy.onPmSourceFieldChange(${i},'ref',this.value)"></div>
-        <div class="sp-field" style="width:150px;"><label>发布日期</label>
-          <input class="pm-item-input" style="text-align:left;" placeholder="YYYY-MM-DD" value="${pmEscAttr(s.date)}" onchange="PagePolicy.onPmSourceFieldChange(${i},'date',this.value)"></div>
-      </div>
-      <div class="row-flex" style="margin-bottom:6px;">
-        <div class="sp-field" style="flex:1;min-width:240px;"><label>链接 URL</label>
-          <input class="pm-item-input" style="text-align:left;" placeholder="https://…" value="${pmEscAttr(s.url)}" onchange="PagePolicy.onPmSourceFieldChange(${i},'url',this.value)"></div>
-        <div class="sp-field" style="width:220px;"><label>发布方</label>
-          <input class="pm-item-input" style="text-align:left;" placeholder="如 广州市人社局" value="${pmEscAttr(s.publisher)}" onchange="PagePolicy.onPmSourceFieldChange(${i},'publisher',this.value)"></div>
-      </div>
-      <div class="row-flex" style="margin-bottom:6px;">
-        <div class="sp-field" style="flex:1;min-width:240px;"><label>确认了什么（写具体数值与算式，如「上限 36348=12183×3」）</label>
-          <input class="pm-item-input" style="text-align:left;" value="${pmEscAttr(s.confirms)}" onchange="PagePolicy.onPmSourceFieldChange(${i},'confirms',this.value)"></div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--t-text-2);">
-        <span>证实险种（不勾=不证实任何险种）：</span>
-        ${SI_ITEMS.map(it => `<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;color:var(--t-text);">
-          <input type="checkbox" ${!Array.isArray(s.covers) || s.covers.indexOf(it.key) >= 0 ? 'checked' : ''}
-            onchange="PagePolicy.onPmSourceCoversToggle(${i},'${it.key}',this.checked)"> ${it.label}</label>`).join('')}
-        <button type="button" class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="PagePolicy.onPmSourceDelete(${i})">删除此来源</button>
-      </div>
-    </div>`).join('');
+
+  /** 单条来源的证实险种 chips（摘要行用）：covers 缺省=全项，空数组=明确不证实 */
+  const coversChips = (s) => {
+    const covered = SI_ITEMS.filter(it => !Array.isArray(s.covers) || s.covers.indexOf(it.key) >= 0);
+    if (!covered.length) return '<span class="pm-source-chip pm-source-chip-none">不证实险种</span>';
+    return covered.map(it => `<span class="pm-source-chip">${SI_ITEM_LABELS[it.key]}</span>`).join('');
+  };
+
+  const srcRow = (s, i) => {
+    const open = pmSrcOpenSet.has(i);
+    const editing = pmSrcEditIdx === i;
+    const title = String(s.title == null ? '' : s.title).trim() || '未命名来源';
+    const meta = sourceMetaText(s);
+    const url = safeSourceUrl(s.url);
+    const head = `
+      <div class="pm-source-head" role="button" tabindex="0" aria-expanded="${open}"
+        onclick="PagePolicy.onPmSourceToggleExpand(${i})"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();PagePolicy.onPmSourceToggleExpand(${i});}">
+        <div class="pm-source-main">
+          <span class="pm-source-name">${pmEscText(title)}</span>
+          ${meta ? `<span class="pm-source-meta">${pmEscText(meta)}</span>` : ''}
+        </div>
+        <span class="pm-source-covers">${coversChips(s)}</span>
+        ${url ? `<a class="pm-source-link" href="${pmEscAttr(url)}" target="_blank" rel="noopener noreferrer"
+          title="打开官方原文" onclick="event.stopPropagation()">原文 ↗</a>` : ''}
+        <span class="pm-source-caret">${open ? '▴' : '▾'}</span>
+      </div>`;
+    if (!open) return `<div class="pm-source-row">${head}</div>`;
+
+    let body;
+    if (editing) {
+      const covBtn = (it) => {
+        const on = !Array.isArray(s.covers) || s.covers.indexOf(it.key) >= 0;
+        return `<button type="button" class="pm-source-cov-btn${on ? ' is-on' : ''}"
+          onclick="PagePolicy.onPmSourceCoversToggle(${i},'${it.key}',${on ? 'false' : 'true'})">${it.label}</button>`;
+      };
+      body = `
+      <div class="pm-source-body">
+        <div class="row-flex" style="margin-bottom:6px;">
+          <div class="sp-field" style="flex:1;min-width:240px;"><label>标题（必填，留空不保留）</label>
+            <input class="pm-item-input" style="text-align:left;" value="${pmEscAttr(s.title)}" onchange="PagePolicy.onPmSourceFieldChange(${i},'title',this.value)"></div>
+        </div>
+        <div class="row-flex" style="margin-bottom:6px;">
+          <div class="sp-field" style="flex:1;min-width:200px;"><label>文号</label>
+            <input class="pm-item-input" style="text-align:left;" placeholder="如 粤府函〔2026〕188号" value="${pmEscAttr(s.ref)}" onchange="PagePolicy.onPmSourceFieldChange(${i},'ref',this.value)"></div>
+          <div class="sp-field" style="width:150px;"><label>发布日期</label>
+            <input class="pm-item-input" style="text-align:left;" placeholder="YYYY-MM-DD" value="${pmEscAttr(s.date)}" onchange="PagePolicy.onPmSourceFieldChange(${i},'date',this.value)"></div>
+          <div class="sp-field" style="width:180px;"><label>发布方</label>
+            <input class="pm-item-input" style="text-align:left;" placeholder="如 广州市人社局" value="${pmEscAttr(s.publisher)}" onchange="PagePolicy.onPmSourceFieldChange(${i},'publisher',this.value)"></div>
+        </div>
+        <div class="row-flex" style="margin-bottom:6px;">
+          <div class="sp-field" style="flex:1;min-width:240px;"><label>链接 URL</label>
+            <input class="pm-item-input" style="text-align:left;" placeholder="https://…" value="${pmEscAttr(s.url)}" onchange="PagePolicy.onPmSourceFieldChange(${i},'url',this.value)"></div>
+        </div>
+        <div class="sp-field" style="margin-bottom:6px;"><label>确认了什么（写具体数值与算式，如「上限 36348=12183×3」）</label>
+          <textarea class="pm-item-input pm-source-confirms-input" rows="4"
+            onchange="PagePolicy.onPmSourceFieldChange(${i},'confirms',this.value)">${pmEscText(s.confirms)}</textarea></div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--t-text-2);">
+          <span>证实险种：</span>
+          ${SI_ITEMS.map(covBtn).join('')}
+          <button type="button" class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="PagePolicy.onPmSourceDoneEdit()">完成</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="PagePolicy.onPmSourceDelete(${i})">删除此来源</button>
+        </div>
+      </div>`;
+    } else {
+      const metaRows = [
+        s.ref ? `<div class="pm-source-kv"><span class="pm-source-k">文号</span>${pmEscText(s.ref)}</div>` : '',
+        s.date ? `<div class="pm-source-kv"><span class="pm-source-k">发布日期</span>${pmEscText(s.date)}</div>` : '',
+        s.publisher ? `<div class="pm-source-kv"><span class="pm-source-k">发布方</span>${pmEscText(s.publisher)}</div>` : '',
+      ].join('');
+      body = `
+      <div class="pm-source-body">
+        ${metaRows}
+        ${s.confirms ? `<div class="pm-source-confirms">${pmEscText(s.confirms)}</div>` : ''}
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;">
+          ${url ? `<a href="${pmEscAttr(url)}" target="_blank" rel="noopener noreferrer" style="color:var(--t-primary);font-size:12px;word-break:break-all;">查看原文 ↗</a>` : ''}
+          <button type="button" class="btn btn-secondary btn-sm" style="margin-left:auto;" onclick="PagePolicy.onPmSourceStartEdit(${i})">✎ 编辑</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="PagePolicy.onPmSourceDelete(${i})">删除此来源</button>
+        </div>
+      </div>`;
+    }
+    return `<div class="pm-source-row is-open">${head}${body}</div>`;
+  };
+
   const cov = SI_ITEMS.map(it => PolicyLib.itemCoveredBySources(it.key, sources)
     ? `<span style="color:var(--t-success);">${it.label} 有据</span>`
     : `<span style="color:var(--t-warning);">${it.label} 无据</span>`).join('<span style="color:var(--t-text-2);"> · </span>');
@@ -280,10 +349,34 @@ function renderProvenanceEditor(rec, diff) {
           onchange="PagePolicy.onPmNoteChange(this.value)">${restoreBtn('note', (recDiff && recDiff.note) || '空')}
       </div>
     </div>
-    ${srcRows || '<div style="color:var(--t-text-2);font-size:12px;margin-bottom:8px;">暂无来源记录——没有来源的数值无法溯源核对，建议逐条补录官方文件。</div>'}
+    ${sources.map(srcRow).join('') || '<div style="color:var(--t-text-2);font-size:12px;margin-bottom:8px;">暂无来源记录——没有来源的数值无法溯源核对，建议逐条补录官方文件。</div>'}
     <div style="margin-bottom:6px;"><button type="button" class="btn btn-secondary btn-sm" onclick="PagePolicy.onPmSourceAdd()">+ 新增来源</button></div>
     <div style="font-size:12px;margin-bottom:4px;">险种依据（按来源 covers 派生）：${cov}</div>
-    <div style="font-size:11px;color:var(--t-text-2);">「有据」只表示该险种至少被一条来源覆盖；核查状态由你人工声明，不随来源自动变化。来源先在本机存档，推送官方数据需维护者更新 tax-policy-data.json。</div>`;
+    <div style="font-size:11px;color:var(--t-text-2);">摘要行点击展开详情；「原文 ↗」直达官方文件。「有据」只表示该险种至少被一条来源覆盖；核查状态由你人工声明，不随来源自动变化。来源先在本机存档，推送官方数据需维护者更新 tax-policy-data.json。</div>`;
+}
+
+/** 摘要行点击：展开/收起；收起正在编辑的条目时一并退出编辑态 */
+function onPmSourceToggleExpand(idx) {
+  if (pmSrcOpenSet.has(idx)) {
+    pmSrcOpenSet.delete(idx);
+    if (pmSrcEditIdx === idx) pmSrcEditIdx = null;
+  } else {
+    pmSrcOpenSet.add(idx);
+  }
+  renderPolicyEditor();
+}
+
+/** 进入单条编辑态（编辑态同时仅一条，specs/2026-10-17 §四①） */
+function onPmSourceStartEdit(idx) {
+  pmSrcOpenSet.add(idx);
+  pmSrcEditIdx = idx;
+  renderPolicyEditor();
+}
+
+/** 退出编辑态：字段为 onchange 即存，此处无草稿可丢 */
+function onPmSourceDoneEdit() {
+  pmSrcEditIdx = null;
+  renderPolicyEditor();
 }
 
 function onPmStatusChange(v) {
@@ -320,6 +413,9 @@ function onPmSourceAdd() {
   if (!rec) return;
   if (!Array.isArray(rec.sources)) rec.sources = [];
   rec.sources.push({ title: '' });
+  const idx = rec.sources.length - 1;
+  pmSrcOpenSet.add(idx);
+  pmSrcEditIdx = idx; /* 新增直入编辑态（specs/2026-10-17 §四①） */
   savePolicyLibrary();
   renderPolicyEditor();
 }
@@ -331,6 +427,7 @@ function onPmSourceDelete(idx) {
   if (!rec.sources.length) delete rec.sources;
   _policyCache.clear();
   savePolicyLibrary();
+  pmSrcResetState(); /* 数组重建即索引漂移，全部收起防错位 */
   renderPolicyEditor();
 }
 
@@ -470,6 +567,7 @@ function pmDeleteYear() {
 /** 单字段恢复官方值（⟲ 角标点击） */
 function onPmRestoreField(cityKey, yk, itemKey, field) {
   if (!restoreOfficialValue(cityKey, yk, itemKey, field)) return;
+  if (itemKey === '__rec' && field === 'sources') pmSrcResetState(); /* sources 数组重建，索引失效 */
   renderPolicyEditor();
   renderSalaryItemsTable();
 }
@@ -571,5 +669,5 @@ function pmImportJSON(input) {
     catch (e) { return null; }
   })();
 
-  window.PagePolicy = { applyImportedLibrary,closePolicyModal,getPmPicker:()=>pmPicker,onPmCheckedAtChange,onPmCityChange,onPmEffectiveChange,onPmFundRatesInput,onPmItemInput,onPmLabelChange,onPmNoteChange,onPmRestoreField,onPmSourceAdd,onPmSourceCoversToggle,onPmSourceDelete,onPmSourceFieldChange,onPmStatusChange,onPmYearChange,openPolicyModal,pmAddCity,pmAddYear,pmDeleteYear,pmExportExcel,pmExportJSON,pmImportExcel,pmImportJSON,pmResetToSeed,renderPolicyEditor,updatePmStorageStatus };
+  window.PagePolicy = { applyImportedLibrary,closePolicyModal,getPmPicker:()=>pmPicker,onPmCheckedAtChange,onPmCityChange,onPmEffectiveChange,onPmFundRatesInput,onPmItemInput,onPmLabelChange,onPmNoteChange,onPmRestoreField,onPmSourceAdd,onPmSourceCoversToggle,onPmSourceDelete,onPmSourceDoneEdit,onPmSourceFieldChange,onPmSourceStartEdit,onPmSourceToggleExpand,onPmStatusChange,onPmYearChange,openPolicyModal,pmAddCity,pmAddYear,pmDeleteYear,pmExportExcel,pmExportJSON,pmImportExcel,pmImportJSON,pmResetToSeed,renderPolicyEditor,updatePmStorageStatus };
 })();
