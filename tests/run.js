@@ -7,8 +7,6 @@
  * 维护约定：js/ 源码加载期用到新 DOM API 时在此补桩吸收，不改源码。
  * ============================================================ */
 'use strict';
-const path = require('path');
-const ROOT = path.join(__dirname, '..');
 
 globalThis.window = globalThis;
 
@@ -35,16 +33,32 @@ globalThis.location = { hash: '', href: '' };
 /* ui.js 顶层绑定 resize/scroll 监听（window 上），Node 无此 API，补桩吸收 */
 globalThis.addEventListener = globalThis.addEventListener || function () {};
 
-[
-  'tax-policy-data.js',
-  'js/state.js', 'js/utils.js', 'js/tax-engine.js', 'js/policy-library.js', 'js/city-picker.js',
-  'js/social-insurance.js', 'js/export-style.js', 'js/exporter.js', 'js/ui.js', 'js/page-shared.js',
-  'js/annual-engine.js',
-  'js/page-multi.js',
-  'js/batch-parse.js', 'js/batch-calc.js', 'js/batch-source.js', 'js/batch-view.js', 'js/batch-export.js',
-  'js/page-batch.js', 'js/page-params.js', 'js/page-rules.js', 'js/page-annual.js', 'js/page-share.js',
-  'js/print-report.js', 'js/self-tests.js'
-].forEach(f => require(path.join(ROOT, f)));
+/* 按序字面量加载（顺序敏感：数据 → 引擎 → 页面 → 自检；路径相对 tests/） */
+require('../tax-policy-data.js');
+require('../js/state.js');
+require('../js/utils.js');
+require('../js/tax-engine.js');
+require('../js/policy-library.js');
+require('../js/city-picker.js');
+require('../js/social-insurance.js');
+require('../js/export-style.js');
+require('../js/exporter.js');
+require('../js/ui.js');
+require('../js/page-shared.js');
+require('../js/annual-engine.js');
+require('../js/page-multi.js');
+require('../js/batch-parse.js');
+require('../js/batch-calc.js');
+require('../js/batch-source.js');
+require('../js/batch-view.js');
+require('../js/batch-export.js');
+require('../js/page-batch.js');
+require('../js/page-params.js');
+require('../js/page-rules.js');
+require('../js/page-annual.js');
+require('../js/page-share.js');
+require('../js/print-report.js');
+require('../js/self-tests.js');
 
 const r = window.TaxTest.runAll();
 if (r.failed.length) {

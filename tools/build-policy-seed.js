@@ -86,7 +86,7 @@ const data = validate(JSON.parse(fs.readFileSync(JSON_PATH, 'utf-8')));
 if (process.argv.includes('--check')) {
   // 校验模式：额外确认生成的 JS 与 JSON 数据语义一致（防止手改 JS 跑偏）
   globalThis.window = globalThis;
-  require(JS_PATH);
+  require('../tax-policy-data.js');
   const seed = window.CITY_POLICY_LIBRARY_DATA;
   const same = JSON.stringify(seed) === JSON.stringify(data.cities);
   if (!same) fail('tax-policy-data.js 与 tax-policy-data.json 不一致——请运行 node tools/build-policy-seed.js 重新生成');
