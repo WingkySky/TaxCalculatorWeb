@@ -56,10 +56,10 @@ function validate(data) {
   return data;
 }
 
-/* 生成 JS：键序与 JSON 一致；为可读性对险种行做轻排版（数值一律原样回写） */
+/* 生成 JS：键序与 JSON 一致；紧凑序列化——种子是同步加载的机器生成文件，
+ * 337 城全量后 pretty 打印会翻倍体积（实测 1.26MB→0.6MB），可读性以 JSON 为准 */
 function buildSeedJs(data) {
-  const citiesJs = JSON.stringify(data.cities, null, 2)
-    .split('\n').map((line, i) => (i === 0 ? line : '  ' + line)).join('\n');
+  const citiesJs = JSON.stringify(data.cities);
   return `/* ============================================================
  * tax-policy-data.js — 城市社保公积金政策库 · 出厂种子（自动生成，勿直接编辑）
  * ------------------------------------------------------------

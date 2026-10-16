@@ -71,8 +71,7 @@ function closePolicyModal() {
 }
 
 function pmCityOptionsHTML() {
-  return Object.entries(CITY_POLICY_LIBRARY).map(([key, city]) =>
-    `<option value="${key}" ${key === window._pmCity ? 'selected' : ''}>${city.name}</option>`).join('');
+  return PageParams.buildCityOptions(window._pmCity);
 }
 
 function onPmCityChange() {

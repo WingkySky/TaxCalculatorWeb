@@ -304,7 +304,11 @@ function normalizePolicyLibrary(lib) {
       Object.keys(rec).forEach(k => { if (!KNOWN_YEAR_FIELDS[k]) n[k] = rec[k]; });
       years[yk] = n;
     });
-    lib[ck] = { name: city.name, years: years };
+    /* 城市级元数据 region（省份分组）/rent（住房租金档）随规范化保留 */
+    const nc = { name: city.name, years: years };
+    if (city.region != null) nc.region = city.region;
+    if (city.rent != null) nc.rent = city.rent;
+    lib[ck] = nc;
   });
 }
 normalizePolicyLibrary(CITY_POLICY_LIBRARY);
@@ -378,6 +382,8 @@ function mergeLibrary(base, user, remote) {
   }
   function mergeCity(cb, cu, cr) {
     const city = { name: valueEqual(cu.name, cb.name) ? cr.name : cu.name, years: {} };
+    /* 省份分组/租金档三方合并（标量，同 name 规则） */
+    ['region', 'rent'].forEach(f => { city[f] = valueEqual(cu[f], cb[f]) ? cr[f] : cu[f]; });
     unionKeys(Object.keys(cr.years), Object.keys(cu.years)).forEach(yk => {
       const yu = cu.years[yk], yr = cr.years[yk], yb = cb.years && cb.years[yk];
       if (yu == null && yr != null) { city.years[yk] = deepClone(yr); return; }

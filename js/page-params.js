@@ -109,12 +109,20 @@ function updateExtraDetailHint() {
 }
 
 
-/** 城市下拉选项 HTML（含自定义；skipCustom 用于批量行内城市场景） */
+/** 城市下拉选项 HTML（含自定义；skipCustom 用于批量行内城市场景）。
+ *  337 城起按 region 分 optgroup（省份分组），无 region 的城市（自定义/用户新增）平铺在前。 */
 function buildCityOptions(selectedValue, skipCustom) {
-  return Object.entries(CITY_POLICY_LIBRARY)
+  const plain = [];
+  const groups = {};
+  Object.entries(CITY_POLICY_LIBRARY)
     .filter(([key]) => !(skipCustom && key === 'custom'))
-    .map(([key, city]) => `<option value="${key}" ${key === selectedValue ? 'selected' : ''}>${city.name}</option>`)
-    .join('');
+    .forEach(([key, city]) => {
+      const opt = `<option value="${key}" ${key === selectedValue ? 'selected' : ''}>${city.name}</option>`;
+      if (city.region) (groups[city.region] = groups[city.region] || []).push(opt);
+      else plain.push(opt);
+    });
+  return plain.join('') + Object.entries(groups)
+    .map(([region, opts]) => `<optgroup label="${region}">${opts.join('')}</optgroup>`).join('');
 }
 
 /** 城市切换：重建年度/公积金比例选项后再读取参数 */

@@ -21,7 +21,12 @@ const EXTRA_ITEM_STANDARDS = {
 
 
 const HOUSE_RENT_TIER_HINTS = { suzhou: 1100 };
-function suggestHouseRentTier(cityId) { return HOUSE_RENT_TIER_HINTS[cityId] || 1500; }
+/** 租金档：优先政策库城市数据（337 城导入后逐城有 rent），回退旧 hints 表与默认 1500 */
+function suggestHouseRentTier(cityId) {
+  const city = PolicyLib.CITY_POLICY_LIBRARY && PolicyLib.CITY_POLICY_LIBRARY[cityId];
+  if (city && city.rent) return city.rent;
+  return HOUSE_RENT_TIER_HINTS[cityId] || 1500;
+}
 
 /**
  * 按分项明细计算某月专项附加扣除（元）

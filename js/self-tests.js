@@ -104,9 +104,12 @@ function runSelfTests() {
   // —— Excel/JSON 扁平转换 roundtrip（Excel 只走数值：溯源字段按设计不进 Excel，导入一律 unverified）——
   const stripProv = lib => {
     const c = JSON.parse(JSON.stringify(lib));
-    Object.values(c).forEach(city => Object.values(city.years).forEach(rec => {
-      delete rec.status; delete rec.checkedAt; delete rec.note; delete rec.sources; delete rec.pending;
-    }));
+    Object.values(c).forEach(city => {
+      delete city.region; delete city.rent; // 城市级元数据不进 Excel（与溯源字段同理）
+      Object.values(city.years).forEach(rec => {
+        delete rec.status; delete rec.checkedAt; delete rec.note; delete rec.sources; delete rec.pending;
+      });
+    });
     return c;
   };
   const rtLib = rowsToLibrary(libraryToRows(CITY_POLICY_LIBRARY)).library;
@@ -123,6 +126,35 @@ function runSelfTests() {
   const gz8000 = computeSocialInsuranceDetail(8000, '', gz.items, 0.05);
   const sz8000 = computeSocialInsuranceDetail(8000, '', sz.items, 0.05);
   isTrue('广州深圳同薪社保公积金不同', gz8000.total !== sz8000.total);
+
+  // —— 337 城导入（city-salary，MIT）：抽样锚点与结构 ——
+  isTrue('导入·真实城市数 ≥ 330', Object.keys(CITY_POLICY_LIBRARY).length - 1 >= 330);
+  const zzImp = CITY_POLICY_LIBRARY.zzheng && CITY_POLICY_LIBRARY.zzheng.years['2026'];
+  isTrue('导入·郑州 2026 五险 3912~19560（豫人社办〔2026〕62号）', !!zzImp && zzImp.items.pension.lower === 3912 && zzImp.items.pension.upper === 19560);
+  isTrue('导入·郑州诚实降级 unverified（对方 partial 不冒充有据）', !!zzImp && zzImp.status === 'unverified');
+  const hebImp = CITY_POLICY_LIBRARY.heb && CITY_POLICY_LIBRARY.heb.years['2026'];
+  isTrue('导入·哈尔滨官方确认→partial 且带来源', !!hebImp && hebImp.status === 'partial' && (hebImp.sources || []).length >= 1);
+  isTrue('导入·拉萨 7172.4~35862', !!CITY_POLICY_LIBRARY.lasa && CITY_POLICY_LIBRARY.lasa.years['2026'].items.pension.lower === 7172.4
+    && CITY_POLICY_LIBRARY.lasa.years['2026'].items.pension.upper === 35862);
+  isTrue('导入·广东 7 月年度窗口 + 沿用记录', (() => {
+    const dgY = CITY_POLICY_LIBRARY.dg && CITY_POLICY_LIBRARY.dg.years;
+    return !!dgY && JSON.stringify(dgY['2025'].effective) === '["2025-07","2026-06"]'
+      && JSON.stringify(dgY['2026'].effective) === '["2026-07","2027-06"]';
+  })());
+  isTrue('导入·省份分组 optgroup 且 custom 平铺在前', (() => {
+    const html = PageParams.buildCityOptions('');
+    return html.indexOf('<optgroup label="河南">') >= 0 && html.indexOf('郑州') >= 0
+      && html.indexOf('value="custom"') >= 0 && html.indexOf('value="custom"') < html.indexOf('<optgroup');
+  })());
+  isTrue('导入·租金档优先读库', (() => {
+    const t = SocialIns.suggestHouseRentTier;
+    return t('zzheng') === CITY_POLICY_LIBRARY.zzheng.rent && t('dg') === CITY_POLICY_LIBRARY.dg.rent
+      && [800, 1100, 1500].indexOf(t('dg')) >= 0 && t('custom') === 1500;
+  })());
+  isTrue('导入·resolvePolicy 匹配新城市（东莞 2026-08 命中沿用记录）', (() => {
+    salaryParams.policyYear = 'auto';
+    return resolvePolicy('dg', '2026-08').items.pension.upper === 27549;
+  })());
 
   // —— 批量「公积金比例」列：多写法解析与行内择档 ——
   eq('parseFundRate 5→0.05', parseFundRate('5'), 0.05);
@@ -1212,13 +1244,16 @@ function runPolicySyncTests() {
   bj.years[yk0].items.pension.lower = snap.years[yk0].items.pension.lower; // 还原
   isTrue('标记·还原后 diff 消失', officialDiffFor('beijing', yk0) === null);
 
-  // —— 远端应用全链路（写本机存档，仅 Node 门内执行） ——
+  // —— 远端应用全链路（写本机存档，仅 Node 门内执行；版本号动态取官方层+1，避免每次发数据硬编码过期） ——
   if (nodeEnv) {
+    const curV = PolicyLib.getOfficialVersion() || '0.0';
+    const pv = curV.split('.');
+    const nextV = pv[0] + '.' + String((parseInt(pv[1], 10) || 0) + 1).padStart(2, '0');
     const libSnap = JSON.parse(JSON.stringify(CITY_POLICY_LIBRARY));
     const c = JSON.parse(JSON.stringify(libSnap.beijing));
     c.years[yk0].items.pension.personal = 0.99;  // 官方新比例（yk0 年度）
-    const info = PolicyLib.applyRemoteOfficial({ version: '2026.11', cities: { beijing: c } });
-    isTrue('远端·返回版本推进信息', !!info && info.from === '2026.10' && info.to === '2026.11');
+    const info = PolicyLib.applyRemoteOfficial({ version: nextV, cities: { beijing: c } });
+    isTrue('远端·返回版本推进信息', !!info && info.from === curV && info.to === nextV);
     isTrue('远端·官方新值生效', PolicyLib.resolvePolicy('beijing', '2025-08').items.pension.personal === 0.99);
     isTrue('远端·其余城市保留', !!CITY_POLICY_LIBRARY.guangzhou);
     isTrue('远端·用户原有数值不丢', PolicyLib.resolvePolicy('beijing', '2025-08').items.pension.lower === libSnap.beijing.years[yk0].items.pension.lower);
@@ -1226,7 +1261,7 @@ function runPolicySyncTests() {
     isTrue('远端·单字段恢复官方值',
       PolicyLib.restoreOfficialValue('beijing', yk0, 'pension', 'personal') === true
       && PolicyLib.resolvePolicy('beijing', '2025-08').items.pension.personal === 0.99);
-    isTrue('远端·非更高版本不生效', PolicyLib.applyRemoteOfficial({ version: '2026.09', cities: libSnap }) === null);
+    isTrue('远端·非更高版本不生效', PolicyLib.applyRemoteOfficial({ version: curV, cities: libSnap }) === null);
     // 还原整个工作库（Node 无 localStorage，clear/写档均静默跳过）
     Object.keys(CITY_POLICY_LIBRARY).forEach(k => delete CITY_POLICY_LIBRARY[k]);
     Object.assign(CITY_POLICY_LIBRARY, libSnap);
