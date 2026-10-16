@@ -7,6 +7,9 @@
 # ZCode 本地工作区状态
 .zcode/
 
+# Mimosa 安全钩子本地状态
+.mimosa/
+
 # AI 技能注入产物（trae 历史教训：技能文档曾被整包提交）
 .agents/
 skills-lock.json
