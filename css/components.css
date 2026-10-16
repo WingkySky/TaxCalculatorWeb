@@ -647,6 +647,10 @@ html.theme-dark .mapping-col { background: rgba(255, 255, 255, 0.04); }
 }
 .pol-status-badge.pol-status-confirmed { color: var(--t-success); background: var(--t-success-bg); border-color: var(--t-success-border); }
 .pol-status-badge.pol-status-partial { color: var(--t-warning); background: var(--t-warning-bg); border-color: var(--t-warning-border); }
+/* 政策库页工具行：徽标对齐 .sp-field 控件规格（28px），与下拉/按钮同高 */
+#policy-modal .sp-field .pol-status-badge { display: inline-flex; align-items: center; min-height: 31px; box-sizing: border-box; }
+/* 政策库页工具行：小按钮升到控件同高 */
+#policy-modal .btn-sm { padding: 5px 12px; font-size: 13px; }
 .pol-status-badge.is-clickable { cursor: pointer; }
 .pol-status-badge.is-clickable:hover { filter: brightness(0.96); }
 
@@ -685,10 +689,10 @@ html.theme-dark .mapping-col { background: rgba(255, 255, 255, 0.04); }
 .city-picker { position: relative; }
 .cp-trigger {
   display: flex; align-items: center; gap: 8px; width: 100%;
-  min-height: 38px; padding: 6px 10px;
+  padding: 5px 10px; box-sizing: border-box;
   background: var(--t-bg-container); color: var(--t-text);
   border: 1px solid var(--t-border); border-radius: var(--t-radius);
-  font-size: 14px; cursor: pointer; text-align: left;
+  font-size: 13px; cursor: pointer; text-align: left;
 }
 .cp-trigger:hover, .city-picker.is-open .cp-trigger { border-color: var(--t-primary); }
 .cp-trigger.is-blank .cp-trigger-text { color: var(--t-text-2); }
